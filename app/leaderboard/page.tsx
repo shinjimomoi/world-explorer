@@ -1,13 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getTopEntries, type LeaderboardEntry } from "@/lib/leaderboard";
+import { getTopScores, type LeaderboardEntry } from "@/lib/leaderboard";
 
 export default function LeaderboardPage() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setEntries(getTopEntries());
+    getTopScores()
+      .then(setEntries)
+      .catch(() => setError("Failed to load scores."))
+      .finally(() => setLoading(false));
   }, []);
 
   return (
@@ -21,7 +26,23 @@ export default function LeaderboardPage() {
         </div>
 
         <div className="rounded-xl border border-border bg-surface overflow-hidden">
-          {entries.length === 0 ? (
+          {loading ? (
+            <div className="divide-y divide-border">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse">
+                  <div className="h-4 w-6 rounded bg-surface-elevated" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3.5 w-28 rounded bg-surface-elevated" />
+                  </div>
+                  <div className="h-3.5 w-14 rounded bg-surface-elevated" />
+                  <div className="h-3.5 w-10 rounded bg-surface-elevated" />
+                  <div className="hidden h-3 w-16 rounded bg-surface-elevated sm:block" />
+                </div>
+              ))}
+            </div>
+          ) : error ? (
+            <div className="px-6 py-12 text-center text-red-400">{error}</div>
+          ) : entries.length === 0 ? (
             <div className="px-6 py-12 text-center">
               <p className="text-foreground-muted">No scores yet. Play a game to get on the board!</p>
               <a

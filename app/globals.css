@@ -45,3 +45,9 @@ body {
   from { transform: scale(1);   opacity: 0.75; }
   to   { transform: scale(3.2); opacity: 0;    }
 }
+
+@keyframes phoneRock {
+  0%, 100% { transform: rotate(0deg);   }
+  30%       { transform: rotate(-90deg); }
+  70%       { transform: rotate(-90deg); }
+}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import PortraitOverlay from "./components/PortraitOverlay";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,6 +38,7 @@ export default function RootLayout({
             <a href="/leaderboard" className="hover:text-foreground transition-colors">Leaderboard</a>
           </nav>
         </header>
+        <PortraitOverlay />
         <main className="flex flex-col flex-1">{children}</main>
       </body>
     </html>

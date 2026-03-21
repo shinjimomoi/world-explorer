@@ -1,31 +1,34 @@
+import { supabase } from "./supabase";
+
 export interface LeaderboardEntry {
   name: string;
   score: number;
   bestStreak: number;
-  date: string; // ISO date string
+  date: string;
 }
 
-const STORAGE_KEY = "world-explorer-leaderboard";
-const MAX_ENTRIES = 10;
-
-export function saveEntry(entry: LeaderboardEntry): void {
-  const all = getAllEntries();
-  all.push(entry);
-  all.sort((a, b) => b.score - a.score);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(all.slice(0, MAX_ENTRIES)));
+export async function saveScore(
+  name: string,
+  score: number,
+  bestStreak: number,
+): Promise<void> {
+  const { error } = await supabase
+    .from("scores")
+    .insert({ name, score, best_streak: bestStreak });
+  if (error) throw error;
 }
 
-export function getTopEntries(): LeaderboardEntry[] {
-  return getAllEntries().slice(0, MAX_ENTRIES);
-}
-
-function getAllEntries(): LeaderboardEntry[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+export async function getTopScores(): Promise<LeaderboardEntry[]> {
+  const { data, error } = await supabase
+    .from("scores")
+    .select("name, score, best_streak, created_at")
+    .order("score", { ascending: false })
+    .limit(10);
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    name: row.name,
+    score: row.score,
+    bestStreak: row.best_streak,
+    date: row.created_at,
+  }));
 }

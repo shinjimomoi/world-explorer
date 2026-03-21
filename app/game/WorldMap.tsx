@@ -10,7 +10,7 @@ import {
   useMapContext,
 } from "react-simple-maps";
 import { countries, countriesByNumericCode, type Country } from "@/data/countries";
-import { saveEntry } from "@/lib/leaderboard";
+import { saveScore } from "@/lib/leaderboard";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -502,17 +502,27 @@ function EndScreen({
 }) {
   const [name, setName] = useState("");
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const maxScore = MAX_POINTS * TOTAL_ROUNDS;
   const pct = Math.round((totalScore / maxScore) * 100);
   const rating = sessionRating(totalScore);
   const color = pct >= 80 ? "#22c55e" : pct >= 50 ? "#eab308" : "#ef4444";
 
-  function handleSave() {
+  async function handleSave() {
     const trimmed = name.trim();
     if (!trimmed) return;
-    saveEntry({ name: trimmed, score: totalScore, bestStreak, date: new Date().toISOString() });
-    setSaved(true);
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await saveScore(trimmed, totalScore, bestStreak);
+      setSaved(true);
+    } catch {
+      setSaveError("Failed to save. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -575,16 +585,20 @@ function EndScreen({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSave()}
-                  className="min-w-0 flex-1 rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus:border-accent focus:outline-none"
+                  disabled={saving}
+                  className="min-w-0 flex-1 rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus:border-accent focus:outline-none disabled:opacity-50"
                 />
                 <button
                   onClick={handleSave}
-                  disabled={!name.trim()}
+                  disabled={!name.trim() || saving}
                   className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Save
+                  {saving ? "Saving…" : "Save"}
                 </button>
               </div>
+              {saveError && (
+                <p className="mt-2 text-xs text-red-400">{saveError}</p>
+              )}
             </>
           )}
         </div>
