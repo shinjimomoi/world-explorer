@@ -42,6 +42,8 @@ interface GuessResult {
   guessLng: number | null;
   country: Country;
   distanceKm: number | null;
+  basePoints: number;
+  multiplier: number;
   points: number;
   timedOut: boolean;
 }
@@ -97,6 +99,14 @@ function sessionRating(score: number): string {
   if (pct >= 0.5) return "Seasoned Traveller";
   if (pct >= 0.3) return "Emerging Geographer";
   return "Keep Exploring!";
+}
+
+function streakMultiplier(streak: number): { multiplier: number; label: string } {
+  if (streak >= 10) return { multiplier: 2.0, label: "World Explorer!" };
+  if (streak >= 7)  return { multiplier: 1.5, label: "Unstoppable!" };
+  if (streak >= 5)  return { multiplier: 1.25, label: "Blazing!" };
+  if (streak >= 3)  return { multiplier: 1.1, label: "On fire!" };
+  return { multiplier: 1.0, label: "" };
 }
 
 /** green ≥800 · yellow ≥500 · red <500 */
@@ -160,15 +170,19 @@ function OceanClickLayer({
 }
 
 // ─── MapCanvas ────────────────────────────────────────────────────────────────
-// memo'd — only re-renders when result or projectionConfig changes.
+// memo'd — only re-renders when result or projectionConfig or mapZoom changes.
+
+interface ZoomState { center: [number, number]; zoom: number }
 
 interface MapCanvasProps {
   onClick: (info: ClickInfo) => void;
   result: GuessResult | null;
   projectionConfig: { scale: number; center: [number, number] };
+  mapZoom: ZoomState;
+  onZoomChange: (z: ZoomState) => void;
 }
 
-const MapCanvas = memo(function MapCanvas({ onClick, result, projectionConfig }: MapCanvasProps) {
+const MapCanvas = memo(function MapCanvas({ onClick, result, projectionConfig, mapZoom, onZoomChange }: MapCanvasProps) {
   const disabled = result !== null;
 
   return (
@@ -179,7 +193,15 @@ const MapCanvas = memo(function MapCanvas({ onClick, result, projectionConfig }:
       height={500}
       style={{ width: "100%", height: "100%", display: "block", cursor: disabled ? "default" : "crosshair", touchAction: "none" }}
     >
-      <ZoomableGroup minZoom={1} maxZoom={8}>
+      <ZoomableGroup
+        center={mapZoom.center}
+        zoom={mapZoom.zoom}
+        minZoom={1}
+        maxZoom={8}
+        onMoveEnd={({ coordinates, zoom }) =>
+          onZoomChange({ center: coordinates as [number, number], zoom })
+        }
+      >
       <OceanClickLayer onClick={onClick} disabled={disabled} />
 
       <Geographies geography={GEO_URL}>
@@ -327,15 +349,16 @@ function ResultOverlay({
 }) {
   const isLastRound = round >= TOTAL_ROUNDS;
   const color = ptColor(result.points);
-  const pct = Math.round((result.points / MAX_POINTS) * 100);
+  const pct = Math.min(100, Math.round((result.points / MAX_POINTS) * 100));
+  const { label: streakLabel } = streakMultiplier(newStreak);
 
   const headline = result.timedOut
     ? "⏱ Time's up!"
-    : result.points >= 900
+    : result.basePoints >= 900
       ? "Outstanding!"
-      : result.points >= 700
+      : result.basePoints >= 700
         ? "Great shot!"
-        : result.points >= 500
+        : result.basePoints >= 500
           ? "Not bad!"
           : "Keep exploring!";
 
@@ -354,9 +377,13 @@ function ResultOverlay({
           <p className="text-base font-bold" style={{ color: result.timedOut ? "#ef4444" : color }}>
             {headline}
           </p>
-          {newStreak > 1 && (
-            <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-semibold text-amber-400">
-              🔥 {newStreak} streak
+          {newStreak >= 1 && (
+            <span
+              key={streakLabel || String(newStreak)}
+              className="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-semibold text-amber-400"
+              style={newStreak >= 3 ? { animation: "popIn 0.42s cubic-bezier(0.34,1.56,0.64,1) both" } : undefined}
+            >
+              🔥 {newStreak}{streakLabel ? ` · ${streakLabel}` : ""}
             </span>
           )}
         </div>
@@ -374,9 +401,16 @@ function ResultOverlay({
               style={{ width: `${pct}%`, backgroundColor: color }}
             />
           </div>
-          <span className="text-xl font-bold tabular-nums" style={{ color }}>
-            +{result.points.toLocaleString()}
-          </span>
+          <div className="shrink-0 text-right">
+            {result.multiplier > 1.0 && !result.timedOut && (
+              <div className="mb-0.5 text-xs leading-none text-white/50 tabular-nums">
+                {result.basePoints.toLocaleString()} × {result.multiplier}×
+              </div>
+            )}
+            <span className="text-xl font-bold tabular-nums" style={{ color }}>
+              +{result.points.toLocaleString()}
+            </span>
+          </div>
         </div>
 
         {/* Row 3: pin legend or timeout message */}
@@ -633,6 +667,7 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
   const [result, setResult] = useState<GuessResult | null>(null);
   const [resultStreak, setResultStreak] = useState(0);
   const [countdown, setCountdown] = useState(3);
+  const [mapZoom, setMapZoom] = useState<ZoomState>({ center: [0, 0], zoom: 1 });
 
   // ── projection config (memo'd so MapCanvas doesn't re-render on timer ticks)
   const { projectionConfig, hint } = useMemo(() => {
@@ -652,15 +687,18 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
     const timedOut = info === null;
 
     let distanceKm: number | null = null;
-    let points = 0;
+    let basePoints = 0;
     if (!timedOut && info) {
       distanceKm = haversineKm(info.lat, info.lng, country.capitalLat, country.capitalLng);
-      points = Math.max(0, MAX_POINTS - Math.floor(distanceKm));
+      basePoints = Math.max(0, MAX_POINTS - Math.floor(distanceKm));
     }
 
-    const newStreak = points > STREAK_THRESHOLD ? streakRef.current + 1 : 0;
+    const newStreak = basePoints > STREAK_THRESHOLD ? streakRef.current + 1 : 0;
     streakRef.current = newStreak;
     if (newStreak > bestStreakRef.current) bestStreakRef.current = newStreak;
+
+    const { multiplier } = streakMultiplier(newStreak);
+    const points = Math.round(basePoints * multiplier);
 
     setRounds((prev) => [
       ...prev,
@@ -675,6 +713,8 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
       guessLng: info?.lng ?? null,
       country,
       distanceKm,
+      basePoints,
+      multiplier,
       points,
       timedOut,
     });
@@ -716,6 +756,7 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
     setBestStreak(0);
     setRounds([]);
     setResult(null);
+    setMapZoom({ center: [0, 0], zoom: 1 });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── round timer: counts down while in guessing phase ─────────────────────
@@ -820,7 +861,7 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
 
       {/* Map fills all remaining height */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <MapCanvas onClick={handleClick} result={result} projectionConfig={projectionConfig} />
+        <MapCanvas onClick={handleClick} result={result} projectionConfig={projectionConfig} mapZoom={mapZoom} onZoomChange={setMapZoom} />
       </div>
 
       {/* Result popup: sibling to the map, centered in the wrapper */}

@@ -77,7 +77,7 @@ function GameNavbar({ s }: { s: GameNavState }) {
 
       {/* Right: streak + round + score */}
       <div className="shrink-0 whitespace-nowrap text-right text-xs text-foreground-muted">
-        {s.streak > 0 && (
+        {s.streak >= 3 && (
           <span className="mr-1.5 font-semibold text-amber-400">🔥{s.streak}</span>
         )}
         <span>
