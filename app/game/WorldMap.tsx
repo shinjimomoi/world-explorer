@@ -503,12 +503,15 @@ function EndScreen({
     setInstagramStatus("generating");
     try {
       const { default: html2canvas } = await import("html2canvas");
+      // Briefly reveal off-screen element so html2canvas can paint it
+      scoreCardRef.current!.style.visibility = "visible";
       const canvas = await html2canvas(scoreCardRef.current!, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#0f1420",
         logging: false,
       });
+      scoreCardRef.current!.style.visibility = "hidden";
       const blob = await new Promise<Blob>((resolve, reject) =>
         canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png"),
       );

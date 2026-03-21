@@ -24,9 +24,9 @@ const ScoreCard = React.forwardRef<HTMLDivElement, ScoreCardProps>(
         ref={ref}
         style={{
           position: "fixed",
-          top: 0,
-          left: 0,
-          zIndex: -1,
+          top: -9999,
+          left: -9999,
+          visibility: "hidden",
           pointerEvents: "none",
           width: 1200,
           height: 630,
