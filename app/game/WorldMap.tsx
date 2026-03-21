@@ -11,7 +11,11 @@ import {
   ZoomableGroup,
   useMapContext,
 } from "react-simple-maps";
-import { countries, countriesByNumericCode, type Country } from "@/data/countries";
+import {
+  countries,
+  countriesByNumericCode,
+  type Country,
+} from "@/data/countries";
 import { saveScore } from "@/lib/leaderboard";
 import { useNavbar } from "@/app/context/navbar";
 import DifficultyModal from "@/app/components/DifficultyModal";
@@ -19,8 +23,9 @@ import ScoreCard from "@/app/components/ScoreCard";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
-const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
-const TOTAL_ROUNDS = process.env.NODE_ENV === "development" ? 3 : 10;
+const GEO_URL =
+  "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+const TOTAL_ROUNDS = process.env.NODE_ENV === "development" ? 3 : 3;
 const MAX_POINTS = 1000;
 const STREAK_THRESHOLD = 500;
 const RESULT_MS = 3000;
@@ -67,8 +72,10 @@ interface D3Projection {
 // ─── pure helpers ─────────────────────────────────────────────────────────────
 
 function haversineKm(
-  lat1: number, lng1: number,
-  lat2: number, lng2: number,
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number
 ): number {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -103,11 +110,14 @@ function sessionRating(score: number): string {
   return "Keep Exploring!";
 }
 
-function streakMultiplier(streak: number): { multiplier: number; label: string } {
+function streakMultiplier(streak: number): {
+  multiplier: number;
+  label: string;
+} {
   if (streak >= 10) return { multiplier: 2.0, label: "World Explorer!" };
-  if (streak >= 7)  return { multiplier: 1.5, label: "Unstoppable!" };
-  if (streak >= 5)  return { multiplier: 1.25, label: "Blazing!" };
-  if (streak >= 3)  return { multiplier: 1.1, label: "On fire!" };
+  if (streak >= 7) return { multiplier: 1.5, label: "Unstoppable!" };
+  if (streak >= 5) return { multiplier: 1.25, label: "Blazing!" };
+  if (streak >= 3) return { multiplier: 1.1, label: "On fire!" };
   return { multiplier: 1.0, label: "" };
 }
 
@@ -120,16 +130,31 @@ function ptColor(points: number): string {
 
 function getZoomConfig(
   capitalLat: number,
-  capitalLng: number,
+  capitalLng: number
 ): { scale: number; center: [number, number]; region: string } {
   // Europe (lng −25→45, lat 35→72)
-  if (capitalLng >= -25 && capitalLng <= 45 && capitalLat >= 35 && capitalLat <= 72)
+  if (
+    capitalLng >= -25 &&
+    capitalLng <= 45 &&
+    capitalLat >= 35 &&
+    capitalLat <= 72
+  )
     return { scale: 520, center: [15, 52], region: "Europe" };
   // Africa (lng −20→55, lat −36→38)
-  if (capitalLng >= -20 && capitalLng <= 55 && capitalLat >= -36 && capitalLat <= 38)
+  if (
+    capitalLng >= -20 &&
+    capitalLng <= 55 &&
+    capitalLat >= -36 &&
+    capitalLat <= 38
+  )
     return { scale: 330, center: [22, 2], region: "Africa" };
   // Asia (remaining eastern hemisphere above −10 lat)
-  if (capitalLng >= 25 && capitalLng <= 180 && capitalLat >= -10 && capitalLat <= 75)
+  if (
+    capitalLng >= 25 &&
+    capitalLng <= 180 &&
+    capitalLat >= -10 &&
+    capitalLat <= 75
+  )
     return { scale: 270, center: [90, 35], region: "Asia" };
   // North America (lng −170→−50, lat > 7)
   if (capitalLng >= -170 && capitalLng <= -50 && capitalLat >= 7)
@@ -162,10 +187,17 @@ function OceanClickLayer({
       style={{ cursor: disabled ? "default" : "crosshair" }}
       onClick={(e: React.MouseEvent<SVGRectElement>) => {
         if (disabled) return;
-        const { x, y } = toSVGCoords(e, e.currentTarget as unknown as SVGGraphicsElement);
+        const { x, y } = toSVGCoords(
+          e,
+          e.currentTarget as unknown as SVGGraphicsElement
+        );
         const coords = projection.invert([x, y]);
         if (!coords) return;
-        onClick({ lng: +coords[0].toFixed(4), lat: +coords[1].toFixed(4), country: null });
+        onClick({
+          lng: +coords[0].toFixed(4),
+          lat: +coords[1].toFixed(4),
+          country: null,
+        });
       }}
     />
   );
@@ -174,7 +206,10 @@ function OceanClickLayer({
 // ─── MapCanvas ────────────────────────────────────────────────────────────────
 // memo'd — only re-renders when result or projectionConfig or mapZoom changes.
 
-interface ZoomState { center: [number, number]; zoom: number }
+interface ZoomState {
+  center: [number, number];
+  zoom: number;
+}
 
 interface MapCanvasProps {
   onClick: (info: ClickInfo) => void;
@@ -184,7 +219,13 @@ interface MapCanvasProps {
   onZoomChange: (z: ZoomState) => void;
 }
 
-const MapCanvas = memo(function MapCanvas({ onClick, result, projectionConfig, mapZoom, onZoomChange }: MapCanvasProps) {
+const MapCanvas = memo(function MapCanvas({
+  onClick,
+  result,
+  projectionConfig,
+  mapZoom,
+  onZoomChange,
+}: MapCanvasProps) {
   const disabled = result !== null;
 
   return (
@@ -193,7 +234,13 @@ const MapCanvas = memo(function MapCanvas({ onClick, result, projectionConfig, m
       projectionConfig={projectionConfig}
       width={960}
       height={500}
-      style={{ width: "100%", height: "100%", display: "block", cursor: disabled ? "default" : "crosshair", touchAction: "none" }}
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "block",
+        cursor: disabled ? "default" : "crosshair",
+        touchAction: "none",
+      }}
     >
       <ZoomableGroup
         center={mapZoom.center}
@@ -204,96 +251,144 @@ const MapCanvas = memo(function MapCanvas({ onClick, result, projectionConfig, m
           onZoomChange({ center: coordinates as [number, number], zoom })
         }
       >
-      <OceanClickLayer onClick={onClick} disabled={disabled} />
+        <OceanClickLayer onClick={onClick} disabled={disabled} />
 
-      <Geographies geography={GEO_URL}>
-        {({ geographies, projection }: any) =>
-          geographies.map((geo: any) => (
-            <Geography
-              key={geo.rsmKey}
-              geography={geo}
-              onClick={(e: React.MouseEvent<SVGPathElement>) => {
-                if (disabled) return;
-                const { x, y } = toSVGCoords(e, e.currentTarget as SVGGraphicsElement);
-                const coords = (projection as D3Projection).invert([x, y]);
-                if (!coords) return;
-                onClick({
-                  lng: +coords[0].toFixed(4),
-                  lat: +coords[1].toFixed(4),
-                  country: countriesByNumericCode.get(Number(geo.id)) ?? null,
-                });
-              }}
-              style={{
-                default: { fill: "#1a2d42", stroke: "#243b55", strokeWidth: 0.5, outline: "none" },
-                hover: {
-                  fill: disabled ? "#1a2d42" : "#2d4a6a",
-                  stroke: disabled ? "#243b55" : "#3a6a9a",
-                  strokeWidth: 0.5,
-                  outline: "none",
-                },
-                pressed: { fill: "#388bfd", stroke: "#58a6ff", strokeWidth: 0.75, outline: "none" },
-              }}
-            />
-          ))
-        }
-      </Geographies>
-
-      {result && (
-        <>
-          {/* Player pin + line — only when there was an actual guess */}
-          {!result.timedOut && result.guessLat !== null && result.guessLng !== null && (
-            <>
-              <Line
-                from={[result.guessLng, result.guessLat]}
-                to={[result.country.capitalLng, result.country.capitalLat]}
-                stroke="#fbbf24"
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeDasharray="5,4"
+        <Geographies geography={GEO_URL}>
+          {({ geographies, projection }: any) =>
+            geographies.map((geo: any) => (
+              <Geography
+                key={geo.rsmKey}
+                geography={geo}
+                onClick={(e: React.MouseEvent<SVGPathElement>) => {
+                  if (disabled) return;
+                  const { x, y } = toSVGCoords(
+                    e,
+                    e.currentTarget as SVGGraphicsElement
+                  );
+                  const coords = (projection as D3Projection).invert([x, y]);
+                  if (!coords) return;
+                  onClick({
+                    lng: +coords[0].toFixed(4),
+                    lat: +coords[1].toFixed(4),
+                    country: countriesByNumericCode.get(Number(geo.id)) ?? null,
+                  });
+                }}
+                style={{
+                  default: {
+                    fill: "#1a2d42",
+                    stroke: "#243b55",
+                    strokeWidth: 0.5,
+                    outline: "none",
+                  },
+                  hover: {
+                    fill: disabled ? "#1a2d42" : "#2d4a6a",
+                    stroke: disabled ? "#243b55" : "#3a6a9a",
+                    strokeWidth: 0.5,
+                    outline: "none",
+                  },
+                  pressed: {
+                    fill: "#388bfd",
+                    stroke: "#58a6ff",
+                    strokeWidth: 0.75,
+                    outline: "none",
+                  },
+                }}
               />
-              <Marker coordinates={[result.guessLng, result.guessLat]}>
-                <g style={{ animation: "pinDrop 0.42s cubic-bezier(0.34,1.56,0.64,1) both" }}>
-                  <circle r={7} fill="#ef4444" stroke="#fff" strokeWidth={2} />
-                  <text
-                    textAnchor="middle"
-                    y={-13}
-                    style={{ fontSize: 10, fill: "#fca5a5", fontFamily: "sans-serif", pointerEvents: "none" }}
-                  >
-                    You
-                  </text>
-                </g>
-              </Marker>
-            </>
-          )}
+            ))
+          }
+        </Geographies>
 
-          {/* Correct capital pin — always shown */}
-          <Marker coordinates={[result.country.capitalLng, result.country.capitalLat]}>
-            {/* Pulsing ring */}
-            <circle
-              r={11}
-              fill="none"
-              stroke="#22c55e"
-              strokeWidth={2}
-              style={{
-                animation: "pulseRing 1.6s ease-out infinite",
-                transformBox: "fill-box",
-                transformOrigin: "center",
-              } as React.CSSProperties}
-            />
-            {/* Pin — drops in 0.1 s after player pin */}
-            <g style={{ animation: "pinDrop 0.42s cubic-bezier(0.34,1.56,0.64,1) 0.1s both" }}>
-              <circle r={7} fill="#22c55e" stroke="#fff" strokeWidth={2} />
-              <text
-                textAnchor="middle"
-                y={-13}
-                style={{ fontSize: 10, fill: "#86efac", fontFamily: "sans-serif", fontWeight: 600, pointerEvents: "none" }}
+        {result && (
+          <>
+            {/* Player pin + line — only when there was an actual guess */}
+            {!result.timedOut &&
+              result.guessLat !== null &&
+              result.guessLng !== null && (
+                <>
+                  <Line
+                    from={[result.guessLng, result.guessLat]}
+                    to={[result.country.capitalLng, result.country.capitalLat]}
+                    stroke="#fbbf24"
+                    strokeWidth={1.5}
+                    strokeLinecap="round"
+                    strokeDasharray="5,4"
+                  />
+                  <Marker coordinates={[result.guessLng, result.guessLat]}>
+                    <g
+                      style={{
+                        animation:
+                          "pinDrop 0.42s cubic-bezier(0.34,1.56,0.64,1) both",
+                      }}
+                    >
+                      <circle
+                        r={7}
+                        fill="#ef4444"
+                        stroke="#fff"
+                        strokeWidth={2}
+                      />
+                      <text
+                        textAnchor="middle"
+                        y={-13}
+                        style={{
+                          fontSize: 10,
+                          fill: "#fca5a5",
+                          fontFamily: "sans-serif",
+                          pointerEvents: "none",
+                        }}
+                      >
+                        You
+                      </text>
+                    </g>
+                  </Marker>
+                </>
+              )}
+
+            {/* Correct capital pin — always shown */}
+            <Marker
+              coordinates={[
+                result.country.capitalLng,
+                result.country.capitalLat,
+              ]}
+            >
+              {/* Pulsing ring */}
+              <circle
+                r={11}
+                fill="none"
+                stroke="#22c55e"
+                strokeWidth={2}
+                style={
+                  {
+                    animation: "pulseRing 1.6s ease-out infinite",
+                    transformBox: "fill-box",
+                    transformOrigin: "center",
+                  } as React.CSSProperties
+                }
+              />
+              {/* Pin — drops in 0.1 s after player pin */}
+              <g
+                style={{
+                  animation:
+                    "pinDrop 0.42s cubic-bezier(0.34,1.56,0.64,1) 0.1s both",
+                }}
               >
-                {result.country.capital}
-              </text>
-            </g>
-          </Marker>
-        </>
-      )}
+                <circle r={7} fill="#22c55e" stroke="#fff" strokeWidth={2} />
+                <text
+                  textAnchor="middle"
+                  y={-13}
+                  style={{
+                    fontSize: 10,
+                    fill: "#86efac",
+                    fontFamily: "sans-serif",
+                    fontWeight: 600,
+                    pointerEvents: "none",
+                  }}
+                >
+                  {result.country.capital}
+                </text>
+              </g>
+            </Marker>
+          </>
+        )}
       </ZoomableGroup>
     </ComposableMap>
   );
@@ -357,12 +452,12 @@ function ResultOverlay({
   const headline = result.timedOut
     ? "⏱ Time's up!"
     : result.basePoints >= 900
-      ? "Outstanding!"
-      : result.basePoints >= 700
-        ? "Great shot!"
-        : result.basePoints >= 500
-          ? "Not bad!"
-          : "Keep exploring!";
+    ? "Outstanding!"
+    : result.basePoints >= 700
+    ? "Great shot!"
+    : result.basePoints >= 500
+    ? "Not bad!"
+    : "Keep exploring!";
 
   return (
     // Bottom sheet: sits at the foot of the game wrapper, never covers the pins
@@ -376,16 +471,27 @@ function ResultOverlay({
       >
         {/* Row 1: headline + streak badge */}
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-base font-bold" style={{ color: result.timedOut ? "#ef4444" : color }}>
+          <p
+            className="text-base font-bold"
+            style={{ color: result.timedOut ? "#ef4444" : color }}
+          >
             {headline}
           </p>
           {newStreak >= 1 && (
             <span
               key={streakLabel || String(newStreak)}
               className="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-semibold text-amber-400"
-              style={newStreak >= 3 ? { animation: "popIn 0.42s cubic-bezier(0.34,1.56,0.64,1) both" } : undefined}
+              style={
+                newStreak >= 3
+                  ? {
+                      animation:
+                        "popIn 0.42s cubic-bezier(0.34,1.56,0.64,1) both",
+                    }
+                  : undefined
+              }
             >
-              🔥 {newStreak}{streakLabel ? ` · ${streakLabel}` : ""}
+              🔥 {newStreak}
+              {streakLabel ? ` · ${streakLabel}` : ""}
             </span>
           )}
         </div>
@@ -430,7 +536,10 @@ function ResultOverlay({
         ) : (
           <p className="mb-2 text-xs text-white/50">
             Capital of {result.country.name} is{" "}
-            <span className="font-semibold text-green-400">{result.country.capital}</span>.
+            <span className="font-semibold text-green-400">
+              {result.country.capital}
+            </span>
+            .
           </p>
         )}
 
@@ -481,7 +590,9 @@ function EndScreen({
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [instagramStatus, setInstagramStatus] = useState<"idle" | "generating" | "saved">("idle");
+  const [instagramStatus, setInstagramStatus] = useState<
+    "idle" | "generating" | "saved"
+  >("idle");
   const scoreCardRef = useRef<HTMLDivElement>(null);
 
   const shareText =
@@ -491,12 +602,15 @@ function EndScreen({
   function handleTwitter() {
     window.open(
       `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`,
-      "_blank",
+      "_blank"
     );
   }
 
   function handleWhatsApp() {
-    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, "_blank");
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(shareText)}`,
+      "_blank"
+    );
   }
 
   async function handleInstagram() {
@@ -513,7 +627,10 @@ function EndScreen({
       });
       scoreCardRef.current!.style.visibility = "hidden";
       const blob = await new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png"),
+        canvas.toBlob(
+          (b) => (b ? resolve(b) : reject(new Error("toBlob failed"))),
+          "image/png"
+        )
       );
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -551,27 +668,37 @@ function EndScreen({
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
       <div className="mx-auto w-full max-w-xl px-4 py-6 sm:py-8">
-
         {/* Hero */}
         <div className="mb-6 text-center sm:mb-8">
           <p className="mb-1 text-sm font-medium uppercase tracking-widest text-foreground-muted">
             Session Complete
           </p>
-          <h1 className="text-3xl font-bold text-foreground sm:text-4xl">{rating}</h1>
+          <h1 className="text-3xl font-bold text-foreground sm:text-4xl">
+            {rating}
+          </h1>
         </div>
 
         {/* Score card */}
         <div className="mb-4 rounded-xl border border-border bg-surface p-4 sm:mb-6 sm:p-5">
           <div className="mb-4 flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-wider text-foreground-muted">Total Score</p>
-              <p className="text-4xl font-bold tabular-nums sm:text-5xl" style={{ color }}>
+              <p className="text-xs uppercase tracking-wider text-foreground-muted">
+                Total Score
+              </p>
+              <p
+                className="text-4xl font-bold tabular-nums sm:text-5xl"
+                style={{ color }}
+              >
                 {totalScore.toLocaleString()}
               </p>
-              <p className="mt-1 text-sm text-foreground-muted">out of {maxScore.toLocaleString()}</p>
+              <p className="mt-1 text-sm text-foreground-muted">
+                out of {maxScore.toLocaleString()}
+              </p>
             </div>
             <div className="text-right">
-              <p className="text-xs uppercase tracking-wider text-foreground-muted">Best Streak</p>
+              <p className="text-xs uppercase tracking-wider text-foreground-muted">
+                Best Streak
+              </p>
               <p className="mt-1 text-3xl font-bold text-amber-400 sm:text-4xl">
                 {bestStreak > 0 ? `🔥 ${bestStreak}` : "—"}
               </p>
@@ -591,15 +718,22 @@ function EndScreen({
             <div className="flex items-center gap-3">
               <span className="text-lg text-green-400">✓</span>
               <div>
-                <p className="text-sm font-semibold text-foreground">Score saved!</p>
-                <a href="/leaderboard" className="text-xs text-accent transition-colors hover:text-accent-hover">
+                <p className="text-sm font-semibold text-foreground">
+                  Score saved!
+                </p>
+                <a
+                  href="/leaderboard"
+                  className="text-xs text-accent transition-colors hover:text-accent-hover"
+                >
                   View leaderboard →
                 </a>
               </div>
             </div>
           ) : (
             <>
-              <p className="mb-3 text-sm font-semibold text-foreground">Save to Leaderboard</p>
+              <p className="mb-3 text-sm font-semibold text-foreground">
+                Save to Leaderboard
+              </p>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -629,30 +763,42 @@ function EndScreen({
         {/* Round breakdown */}
         <div className="mb-4 overflow-hidden rounded-xl border border-border bg-surface sm:mb-6">
           <div className="border-b border-border px-4 py-3">
-            <p className="text-sm font-semibold text-foreground">Round Breakdown</p>
+            <p className="text-sm font-semibold text-foreground">
+              Round Breakdown
+            </p>
           </div>
           <div className="divide-y divide-border">
             {rounds.map((r) => {
               const rColor = ptColor(r.points);
               const rPct = (r.points / MAX_POINTS) * 100;
               return (
-                <div key={r.round} className="flex items-center gap-3 px-4 py-2.5 sm:py-3">
+                <div
+                  key={r.round}
+                  className="flex items-center gap-3 px-4 py-2.5 sm:py-3"
+                >
                   <span className="w-6 shrink-0 text-center text-xs font-medium text-foreground-muted">
                     {r.round}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-foreground">{r.country.name}</p>
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {r.country.name}
+                    </p>
                     <p className="truncate text-xs text-foreground-muted">
                       {r.timedOut
                         ? `Timed out · ${r.country.capital}`
                         : r.distanceKm !== null
-                          ? `${Math.round(r.distanceKm).toLocaleString()} km from ${r.country.capital}`
-                          : r.country.capital}
+                        ? `${Math.round(
+                            r.distanceKm
+                          ).toLocaleString()} km from ${r.country.capital}`
+                        : r.country.capital}
                     </p>
                   </div>
                   <div className="hidden w-16 sm:block">
                     <div className="h-1.5 overflow-hidden rounded-full bg-surface-elevated">
-                      <div className="h-full rounded-full" style={{ width: `${rPct}%`, backgroundColor: rColor }} />
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${rPct}%`, backgroundColor: rColor }}
+                      />
                     </div>
                   </div>
                   <span
@@ -680,7 +826,7 @@ function EndScreen({
               style={{ background: "#000" }}
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
               </svg>
               <span className="text-[11px] font-semibold">Share on X</span>
             </button>
@@ -692,9 +838,11 @@ function EndScreen({
               style={{ background: "#25D366" }}
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
               </svg>
-              <span className="text-[11px] font-semibold">Share on WhatsApp</span>
+              <span className="text-[11px] font-semibold">
+                Share on WhatsApp
+              </span>
             </button>
 
             {/* Instagram */}
@@ -702,13 +850,18 @@ function EndScreen({
               onClick={handleInstagram}
               disabled={instagramStatus === "generating"}
               className="flex flex-col items-center justify-center gap-1.5 rounded-xl py-3 text-white transition-opacity hover:opacity-85 disabled:opacity-60"
-              style={{ background: "linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" }}
+              style={{
+                background:
+                  "linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)",
+              }}
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
               </svg>
               <span className="text-[11px] font-semibold">
-                {instagramStatus === "generating" ? "Saving…" : "Share on Instagram"}
+                {instagramStatus === "generating"
+                  ? "Saving…"
+                  : "Share on Instagram"}
               </span>
             </button>
           </div>
@@ -730,7 +883,10 @@ function EndScreen({
 
         {showDifficultyModal && (
           <DifficultyModal
-            onSelect={(d) => { setShowDifficultyModal(false); onPlayAgain(d); }}
+            onSelect={(d) => {
+              setShowDifficultyModal(false);
+              onPlayAgain(d);
+            }}
             onClose={() => setShowDifficultyModal(false)}
           />
         )}
@@ -777,7 +933,7 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
   // ── state ─────────────────────────────────────────────────────────────────
   const [gamePhase, setGamePhase] = useState<GamePhase>("playing");
   const [currentCountry, setCurrentCountry] = useState<Country>(
-    () => currentCountryRef.current!,
+    () => currentCountryRef.current!
   );
   const [round, setRound] = useState(1);
   const [timerSecondsLeft, setTimerSecondsLeft] = useState(roundSeconds);
@@ -788,12 +944,18 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
   const [result, setResult] = useState<GuessResult | null>(null);
   const [resultStreak, setResultStreak] = useState(0);
   const [countdown, setCountdown] = useState(3);
-  const [mapZoom, setMapZoom] = useState<ZoomState>({ center: [0, 0], zoom: 1 });
+  const [mapZoom, setMapZoom] = useState<ZoomState>({
+    center: [0, 0],
+    zoom: 1,
+  });
 
   // ── projection config (memo'd so MapCanvas doesn't re-render on timer ticks)
   const { projectionConfig, hint } = useMemo(() => {
     if (difficulty === "easy" && result === null) {
-      const zoom = getZoomConfig(currentCountry.capitalLat, currentCountry.capitalLng);
+      const zoom = getZoomConfig(
+        currentCountry.capitalLat,
+        currentCountry.capitalLng
+      );
       return {
         projectionConfig: { scale: zoom.scale, center: zoom.center },
         hint: zoom.region || undefined,
@@ -810,7 +972,12 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
     let distanceKm: number | null = null;
     let basePoints = 0;
     if (!timedOut && info) {
-      distanceKm = haversineKm(info.lat, info.lng, country.capitalLat, country.capitalLng);
+      distanceKm = haversineKm(
+        info.lat,
+        info.lng,
+        country.capitalLat,
+        country.capitalLng
+      );
       basePoints = Math.max(0, MAX_POINTS - Math.floor(distanceKm));
     }
 
@@ -883,7 +1050,10 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
   // ── round timer: counts down while in guessing phase ─────────────────────
   useEffect(() => {
     if (result !== null || gamePhase !== "playing") return;
-    const iv = setInterval(() => setTimerSecondsLeft((s) => Math.max(0, s - 1)), 1000);
+    const iv = setInterval(
+      () => setTimerSecondsLeft((s) => Math.max(0, s - 1)),
+      1000
+    );
     return () => clearInterval(iv);
   }, [result, round, gamePhase]);
 
@@ -917,7 +1087,7 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
       acceptingRef.current = false;
       submitResult(info);
     },
-    [submitResult],
+    [submitResult]
   );
 
   // ── quit handlers ─────────────────────────────────────────────────────────
@@ -929,13 +1099,14 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
   // ── sync game state into the merged navbar ────────────────────────────────
   useEffect(() => {
     if (gamePhase !== "playing") return;
-    const timerPct = result !== null ? 0 : (timerSecondsLeft / roundSeconds) * 100;
+    const timerPct =
+      result !== null ? 0 : (timerSecondsLeft / roundSeconds) * 100;
     const timerColor =
       timerSecondsLeft > roundSeconds * 0.5
         ? "#22c55e"
         : timerSecondsLeft > roundSeconds * 0.25
-          ? "#eab308"
-          : "#ef4444";
+        ? "#eab308"
+        : "#ef4444";
     setNavbarState({
       active: true,
       countryName: currentCountry.name,
@@ -950,7 +1121,19 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
       isResult: result !== null,
       onQuit: handleQuit,
     });
-  }, [gamePhase, currentCountry, hint, round, totalScore, streak, timerSecondsLeft, result, roundSeconds, setNavbarState, handleQuit]);
+  }, [
+    gamePhase,
+    currentCountry,
+    hint,
+    round,
+    totalScore,
+    streak,
+    timerSecondsLeft,
+    result,
+    roundSeconds,
+    setNavbarState,
+    handleQuit,
+  ]);
 
   // ── clear navbar when game ends or component unmounts ────────────────────
   useEffect(() => {
@@ -983,10 +1166,15 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
     // No overflow:hidden here — that lives on the inner map div so the popup
     // isn't clipped.
     <div className="relative flex flex-1 flex-col min-h-0">
-
       {/* Map fills all remaining height */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <MapCanvas onClick={handleClick} result={result} projectionConfig={projectionConfig} mapZoom={mapZoom} onZoomChange={setMapZoom} />
+        <MapCanvas
+          onClick={handleClick}
+          result={result}
+          projectionConfig={projectionConfig}
+          mapZoom={mapZoom}
+          onZoomChange={setMapZoom}
+        />
       </div>
 
       {/* Result popup: sibling to the map, centered in the wrapper */}
