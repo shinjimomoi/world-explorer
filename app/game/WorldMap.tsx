@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, memo, useRef, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   ComposableMap,
   Geographies,
@@ -11,6 +12,7 @@ import {
 } from "react-simple-maps";
 import { countries, countriesByNumericCode, type Country } from "@/data/countries";
 import { saveScore } from "@/lib/leaderboard";
+import { useNavbar } from "@/app/context/navbar";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -175,7 +177,7 @@ const MapCanvas = memo(function MapCanvas({ onClick, result, projectionConfig }:
       projectionConfig={projectionConfig}
       width={960}
       height={500}
-      style={{ width: "100%", height: "auto", display: "block", cursor: disabled ? "default" : "crosshair" }}
+      style={{ width: "100%", height: "100%", display: "block", cursor: disabled ? "default" : "crosshair" }}
     >
       <OceanClickLayer onClick={onClick} disabled={disabled} />
 
@@ -273,94 +275,36 @@ const MapCanvas = memo(function MapCanvas({ onClick, result, projectionConfig }:
   );
 });
 
-// ─── GameHeader ───────────────────────────────────────────────────────────────
+// ─── QuitDialog ───────────────────────────────────────────────────────────────
 
-function GameHeader({
-  country,
-  round,
-  totalScore,
-  streak,
-  timerSecondsLeft,
-  roundSeconds,
-  isResult,
-  hint,
+function QuitDialog({
+  onConfirm,
+  onCancel,
 }: {
-  country: Country;
-  round: number;
-  totalScore: number;
-  streak: number;
-  timerSecondsLeft: number;
-  roundSeconds: number;
-  isResult: boolean;
-  hint?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
 }) {
-  const timerPct = (timerSecondsLeft / roundSeconds) * 100;
-  const timerColor =
-    timerSecondsLeft > roundSeconds * 0.5
-      ? "#22c55e"
-      : timerSecondsLeft > roundSeconds * 0.25
-        ? "#eab308"
-        : "#ef4444";
-
   return (
-    <div className="border-b border-border bg-surface">
-      <div className="flex items-start justify-between gap-3 px-3 py-2 sm:px-6 sm:py-3">
-        {/* Left: round label + country */}
-        <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wider text-foreground-muted">
-            {isResult ? `Round ${round}/${TOTAL_ROUNDS} · Result` : `Round ${round}/${TOTAL_ROUNDS}`}
-          </p>
-          <p className="mt-0.5 truncate text-xl font-bold text-foreground sm:text-2xl">
-            {country.name}
-          </p>
-          {!isResult && (
-            <p className="mt-0.5 text-xs text-foreground-muted sm:text-sm">
-              Find{" "}
-              <span className="font-semibold" style={{ color: "#58a6ff" }}>
-                {country.capital}
-              </span>
-              {hint && (
-                <span className="ml-2 rounded bg-surface-elevated px-1.5 py-0.5 text-xs text-foreground-muted">
-                  📍 {hint}
-                </span>
-              )}
-            </p>
-          )}
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-6 shadow-2xl">
+        <h2 className="text-lg font-bold text-foreground">Quit game?</h2>
+        <p className="mt-2 text-sm text-foreground-muted">
+          Are you sure you want to quit? Your progress will be lost.
+        </p>
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            onClick={onCancel}
+            className="rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface-elevated"
+          >
+            Keep playing
+          </button>
+          <button
+            onClick={onConfirm}
+            className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500"
+          >
+            Quit
+          </button>
         </div>
-
-        {/* Right: streak + score */}
-        <div className="flex shrink-0 items-start gap-3 text-right sm:gap-5">
-          {streak > 0 && (
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-foreground-muted">
-                Streak
-              </p>
-              <p className="mt-0.5 text-xl font-bold text-amber-400 sm:text-2xl">
-                🔥 {streak}
-              </p>
-            </div>
-          )}
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-foreground-muted">
-              Score
-            </p>
-            <p className="mt-0.5 text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
-              {totalScore.toLocaleString()}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Timer bar */}
-      <div className="h-1.5 w-full bg-surface-elevated">
-        <div
-          style={{
-            height: "100%",
-            width: isResult ? "0%" : `${timerPct}%`,
-            backgroundColor: timerColor,
-            transition: isResult ? "none" : "width 1s linear, background-color 0.5s",
-          }}
-        />
       </div>
     </div>
   );
@@ -396,12 +340,18 @@ function ResultOverlay({
           : "Keep exploring!";
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center px-3 sm:bottom-6 sm:px-4">
-      <div className="pointer-events-auto w-full max-w-sm rounded-xl border border-border bg-surface/95 p-4 shadow-2xl backdrop-blur-sm sm:p-5">
-
-        {/* Headline */}
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-lg font-bold" style={{ color: result.timedOut ? "#ef4444" : color }}>
+    // Bottom sheet: sits at the foot of the game wrapper, never covers the pins
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10">
+      <div
+        className="pointer-events-auto rounded-t-2xl border-t border-x border-white/10 px-4 py-3"
+        style={{
+          background: "rgba(15, 20, 30, 0.85)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        {/* Row 1: headline + streak badge */}
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-base font-bold" style={{ color: result.timedOut ? "#ef4444" : color }}>
             {headline}
           </p>
           {newStreak > 1 && (
@@ -411,60 +361,48 @@ function ResultOverlay({
           )}
         </div>
 
-        {/* Stats */}
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-wider text-foreground-muted">Distance</p>
-            <p className="text-xl font-bold text-foreground">
-              {result.timedOut || result.distanceKm === null
-                ? "—"
-                : `${Math.round(result.distanceKm).toLocaleString()} km`}
-            </p>
+        {/* Row 2: distance · points · score bar all in one line */}
+        <div className="mb-2 flex items-center gap-3">
+          <span className="text-sm text-white/60">
+            {result.timedOut || result.distanceKm === null
+              ? "—"
+              : `${Math.round(result.distanceKm).toLocaleString()} km`}
+          </span>
+          <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full transition-[width] duration-700"
+              style={{ width: `${pct}%`, backgroundColor: color }}
+            />
           </div>
-          <div className="text-right">
-            <p className="text-xs uppercase tracking-wider text-foreground-muted">Points</p>
-            <p className="text-3xl font-bold tabular-nums" style={{ color }}>
-              +{result.points.toLocaleString()}
-            </p>
-          </div>
+          <span className="text-xl font-bold tabular-nums" style={{ color }}>
+            +{result.points.toLocaleString()}
+          </span>
         </div>
 
-        {/* Score bar */}
-        <div className="mb-4 h-2 w-full overflow-hidden rounded-full bg-surface-elevated">
-          <div
-            className="h-full rounded-full transition-[width] duration-700"
-            style={{ width: `${pct}%`, backgroundColor: color }}
-          />
-        </div>
-
-        {/* Pin legend */}
-        {!result.timedOut && (
-          <div className="mb-4 flex gap-5 text-xs text-foreground-muted">
+        {/* Row 3: pin legend or timeout message */}
+        {!result.timedOut ? (
+          <div className="mb-2 flex gap-4 text-xs text-white/50">
             <span className="flex items-center gap-1.5">
-              <span className="inline-block h-3 w-3 rounded-full bg-green-500" />
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500" />
               {result.country.capital}
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="inline-block h-3 w-3 rounded-full bg-red-500" />
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
               Your guess
             </span>
           </div>
-        )}
-
-        {/* Timeout: reveal correct capital */}
-        {result.timedOut && (
-          <p className="mb-4 text-sm text-foreground-muted">
-            The capital of{" "}
-            <span className="font-semibold text-foreground">{result.country.name}</span> is{" "}
+        ) : (
+          <p className="mb-2 text-xs text-white/50">
+            Capital of {result.country.name} is{" "}
             <span className="font-semibold text-green-400">{result.country.capital}</span>.
           </p>
         )}
 
-        {/* Countdown + action */}
+        {/* Row 4: countdown + next button */}
         <div className="flex items-center justify-between">
-          <p className="text-xs text-foreground-muted">
+          <p className="text-xs text-white/40">
             {isLastRound ? "Results in " : "Next in "}
-            <span className="font-semibold text-foreground">{countdown}</span>…
+            <span className="font-semibold text-white/70">{countdown}</span>…
           </p>
           <button
             onClick={onAdvance}
@@ -474,8 +412,8 @@ function ResultOverlay({
           </button>
         </div>
 
-        {/* Auto-advance shrink bar */}
-        <div className="mt-3 h-0.5 overflow-hidden rounded-full bg-surface-elevated">
+        {/* Auto-advance progress */}
+        <div className="mt-2 h-0.5 overflow-hidden rounded-full bg-white/10">
           <div
             key={`${result.country.numericCode}-${result.guessLat}-${result.guessLng}`}
             className="h-full rounded-full bg-accent"
@@ -660,6 +598,9 @@ function EndScreen({
 
 export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
   const roundSeconds = difficulty === "hard" ? 15 : 30;
+  const router = useRouter();
+  const { setState: setNavbarState } = useNavbar();
+  const [showQuitDialog, setShowQuitDialog] = useState(false);
 
   // ── stable refs (mutations don't trigger re-renders) ─────────────────────
   const queueRef = useRef<Country[]>([]);
@@ -817,6 +758,47 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
     [submitResult],
   );
 
+  // ── quit handlers ─────────────────────────────────────────────────────────
+  const handleQuit = useCallback(() => setShowQuitDialog(true), []);
+  const handleConfirmQuit = useCallback(() => {
+    router.push("/");
+  }, [router]);
+
+  // ── sync game state into the merged navbar ────────────────────────────────
+  useEffect(() => {
+    if (gamePhase !== "playing") return;
+    const timerPct = result !== null ? 0 : (timerSecondsLeft / roundSeconds) * 100;
+    const timerColor =
+      timerSecondsLeft > roundSeconds * 0.5
+        ? "#22c55e"
+        : timerSecondsLeft > roundSeconds * 0.25
+          ? "#eab308"
+          : "#ef4444";
+    setNavbarState({
+      active: true,
+      countryName: currentCountry.name,
+      capital: currentCountry.capital,
+      hint,
+      round,
+      totalRounds: TOTAL_ROUNDS,
+      totalScore,
+      streak,
+      timerPct,
+      timerColor,
+      isResult: result !== null,
+      onQuit: handleQuit,
+    });
+  }, [gamePhase, currentCountry, hint, round, totalScore, streak, timerSecondsLeft, result, roundSeconds, setNavbarState, handleQuit]);
+
+  // ── clear navbar when game ends or component unmounts ────────────────────
+  useEffect(() => {
+    if (gamePhase === "ended") setNavbarState({ active: false });
+  }, [gamePhase, setNavbarState]);
+
+  useEffect(() => {
+    return () => setNavbarState({ active: false });
+  }, [setNavbarState]);
+
   // ── render ────────────────────────────────────────────────────────────────
 
   if (gamePhase === "ended") {
@@ -831,31 +813,33 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
   }
 
   return (
-    <div className="flex flex-1 flex-col">
-      <GameHeader
-        country={currentCountry}
-        round={round}
-        totalScore={totalScore}
-        streak={streak}
-        timerSecondsLeft={timerSecondsLeft}
-        roundSeconds={roundSeconds}
-        isResult={result !== null}
-        hint={hint}
-      />
+    // Wrapper: position:relative so the popup can absolute-center inside it.
+    // No overflow:hidden here — that lives on the inner map div so the popup
+    // isn't clipped.
+    <div className="relative flex flex-1 flex-col min-h-0">
 
-      <div className="relative min-h-[160px] flex-1">
+      {/* Map fills all remaining height */}
+      <div className="flex-1 min-h-0 overflow-hidden">
         <MapCanvas onClick={handleClick} result={result} projectionConfig={projectionConfig} />
-
-        {result && (
-          <ResultOverlay
-            result={result}
-            round={round}
-            newStreak={resultStreak}
-            countdown={countdown}
-            onAdvance={advance}
-          />
-        )}
       </div>
+
+      {/* Result popup: sibling to the map, centered in the wrapper */}
+      {result && (
+        <ResultOverlay
+          result={result}
+          round={round}
+          newStreak={resultStreak}
+          countdown={countdown}
+          onAdvance={advance}
+        />
+      )}
+
+      {showQuitDialog && (
+        <QuitDialog
+          onConfirm={handleConfirmQuit}
+          onCancel={() => setShowQuitDialog(false)}
+        />
+      )}
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { NavbarProvider } from "./context/navbar";
+import Navbar from "./components/Navbar";
 import PortraitOverlay from "./components/PortraitOverlay";
 
 const geistSans = Geist({
@@ -28,18 +30,12 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground">
-        <header className="flex items-center justify-between px-4 py-3 border-b border-border sm:px-6 sm:py-4">
-          <a href="/" className="text-lg font-semibold tracking-wide text-foreground hover:text-accent-hover transition-colors">
-            World Explorer
-          </a>
-          <nav className="flex gap-6 text-sm text-foreground-muted">
-            <a href="/game" className="hover:text-foreground transition-colors">Play</a>
-            <a href="/leaderboard" className="hover:text-foreground transition-colors">Leaderboard</a>
-          </nav>
-        </header>
-        <PortraitOverlay />
-        <main className="flex flex-col flex-1">{children}</main>
+      <body className="h-dvh overflow-hidden flex flex-col bg-background text-foreground">
+        <NavbarProvider>
+          <Navbar />
+          <PortraitOverlay />
+          <main className="flex flex-col flex-1 min-h-0 overflow-hidden">{children}</main>
+        </NavbarProvider>
       </body>
     </html>
   );

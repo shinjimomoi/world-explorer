@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-8 px-4 text-center sm:px-6">
+    <div className="flex flex-1 flex-col items-center justify-center gap-8 overflow-y-auto px-4 text-center sm:px-6">
       <div className="flex flex-col gap-3">
         <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
           World Explorer

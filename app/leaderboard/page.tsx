@@ -16,7 +16,7 @@ export default function LeaderboardPage() {
   }, []);
 
   return (
-    <div className="flex flex-1 flex-col items-center px-4 py-10">
+    <div className="flex flex-1 flex-col items-center overflow-y-auto px-4 py-10">
       <div className="w-full max-w-xl">
         <div className="mb-8 text-center">
           <p className="mb-1 text-sm font-medium uppercase tracking-widest text-foreground-muted">
