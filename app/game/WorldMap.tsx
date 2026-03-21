@@ -8,6 +8,7 @@ import {
   Geography,
   Marker,
   Line,
+  ZoomableGroup,
   useMapContext,
 } from "react-simple-maps";
 import { countries, countriesByNumericCode, type Country } from "@/data/countries";
@@ -80,11 +81,12 @@ function shuffled(): Country[] {
   return [...countries].sort(() => Math.random() - 0.5);
 }
 
-function toSVGCoords(e: React.MouseEvent, svg: SVGSVGElement): DOMPoint {
+function toSVGCoords(e: React.MouseEvent, el: SVGGraphicsElement): DOMPoint {
+  const svg = el.closest("svg") as SVGSVGElement;
   const pt = svg.createSVGPoint();
   pt.x = e.clientX;
   pt.y = e.clientY;
-  return pt.matrixTransform(svg.getScreenCTM()!.inverse());
+  return pt.matrixTransform(el.getScreenCTM()!.inverse());
 }
 
 function sessionRating(score: number): string {
@@ -148,9 +150,7 @@ function OceanClickLayer({
       style={{ cursor: disabled ? "default" : "crosshair" }}
       onClick={(e: React.MouseEvent<SVGRectElement>) => {
         if (disabled) return;
-        const svg = e.currentTarget.closest("svg") as SVGSVGElement | null;
-        if (!svg) return;
-        const { x, y } = toSVGCoords(e, svg);
+        const { x, y } = toSVGCoords(e, e.currentTarget as unknown as SVGGraphicsElement);
         const coords = projection.invert([x, y]);
         if (!coords) return;
         onClick({ lng: +coords[0].toFixed(4), lat: +coords[1].toFixed(4), country: null });
@@ -177,8 +177,9 @@ const MapCanvas = memo(function MapCanvas({ onClick, result, projectionConfig }:
       projectionConfig={projectionConfig}
       width={960}
       height={500}
-      style={{ width: "100%", height: "100%", display: "block", cursor: disabled ? "default" : "crosshair" }}
+      style={{ width: "100%", height: "100%", display: "block", cursor: disabled ? "default" : "crosshair", touchAction: "none" }}
     >
+      <ZoomableGroup minZoom={1} maxZoom={8}>
       <OceanClickLayer onClick={onClick} disabled={disabled} />
 
       <Geographies geography={GEO_URL}>
@@ -189,9 +190,7 @@ const MapCanvas = memo(function MapCanvas({ onClick, result, projectionConfig }:
               geography={geo}
               onClick={(e: React.MouseEvent<SVGPathElement>) => {
                 if (disabled) return;
-                const svg = (e.currentTarget as Element).closest("svg") as SVGSVGElement | null;
-                if (!svg) return;
-                const { x, y } = toSVGCoords(e, svg);
+                const { x, y } = toSVGCoords(e, e.currentTarget as SVGGraphicsElement);
                 const coords = (projection as D3Projection).invert([x, y]);
                 if (!coords) return;
                 onClick({
@@ -271,6 +270,7 @@ const MapCanvas = memo(function MapCanvas({ onClick, result, projectionConfig }:
           </Marker>
         </>
       )}
+      </ZoomableGroup>
     </ComposableMap>
   );
 });

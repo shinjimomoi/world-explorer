@@ -1,9 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { NavbarProvider } from "./context/navbar";
 import Navbar from "./components/Navbar";
-import PortraitOverlay from "./components/PortraitOverlay";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,6 +13,11 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
+export const viewport: Viewport = {
+  maximumScale: 1,
+  userScalable: false,
+};
 
 export const metadata: Metadata = {
   title: "World Explorer",
@@ -33,8 +37,7 @@ export default function RootLayout({
       <body className="h-dvh overflow-hidden flex flex-col bg-background text-foreground">
         <NavbarProvider>
           <Navbar />
-          <PortraitOverlay />
-          <main className="flex flex-col flex-1 min-h-0 overflow-hidden">{children}</main>
+<main className="flex flex-col flex-1 min-h-0 overflow-hidden">{children}</main>
         </NavbarProvider>
       </body>
     </html>
