@@ -14,11 +14,12 @@ import {
 import { countries, countriesByNumericCode, type Country } from "@/data/countries";
 import { saveScore } from "@/lib/leaderboard";
 import { useNavbar } from "@/app/context/navbar";
+import DifficultyModal from "@/app/components/DifficultyModal";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
-const TOTAL_ROUNDS = 10;
+const TOTAL_ROUNDS = process.env.NODE_ENV === "development" ? 3 : 10;
 const MAX_POINTS = 1000;
 const STREAK_THRESHOLD = 500;
 const RESULT_MS = 3000;
@@ -470,12 +471,33 @@ function EndScreen({
   totalScore: number;
   bestStreak: number;
   rounds: RoundRecord[];
-  onPlayAgain: () => void;
+  onPlayAgain: (difficulty: Difficulty) => void;
 }) {
+  const [showDifficultyModal, setShowDifficultyModal] = useState(false);
   const [name, setName] = useState("");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
+
+  const shareText =
+    `🌍 I scored ${totalScore.toLocaleString()} pts on World Explorer!\n` +
+    (bestStreak > 0 ? `Best streak: ${bestStreak} 🔥\n` : "") +
+    `Can you beat me? https://world-explorer-five-liard.vercel.app`;
+
+  async function handleShare() {
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ text: shareText });
+      } catch {
+        // user cancelled — do nothing
+      }
+      return;
+    }
+    await navigator.clipboard.writeText(shareText);
+    setShareStatus("copied");
+    setTimeout(() => setShareStatus("idle"), 2500);
+  }
 
   const maxScore = MAX_POINTS * TOTAL_ROUNDS;
   const pct = Math.round((totalScore / maxScore) * 100);
@@ -616,13 +638,43 @@ function EndScreen({
           </div>
         </div>
 
-        {/* Play again */}
-        <button
-          onClick={onPlayAgain}
-          className="w-full rounded-lg bg-accent py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
-        >
-          Play Again
-        </button>
+        {/* Action buttons */}
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={handleShare}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-surface py-3 text-sm font-semibold text-foreground transition-colors hover:bg-surface-elevated"
+          >
+            {shareStatus === "copied" ? (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" className="h-4 w-4 text-green-400" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="2 8 6 12 14 4" />
+                </svg>
+                <span className="text-green-400">Copied to clipboard!</span>
+              </>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="3" r="1.75"/><circle cx="4" cy="8" r="1.75"/><circle cx="12" cy="13" r="1.75"/>
+                  <line x1="5.75" y1="7" x2="10.25" y2="4.25"/><line x1="5.75" y1="9" x2="10.25" y2="11.75"/>
+                </svg>
+                Share my score
+              </>
+            )}
+          </button>
+          <button
+            onClick={() => setShowDifficultyModal(true)}
+            className="w-full rounded-lg bg-accent py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+          >
+            Play Again
+          </button>
+        </div>
+
+        {showDifficultyModal && (
+          <DifficultyModal
+            onSelect={(d) => { setShowDifficultyModal(false); onPlayAgain(d); }}
+            onClose={() => setShowDifficultyModal(false)}
+          />
+        )}
       </div>
     </div>
   );
@@ -848,7 +900,10 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
         totalScore={totalScore}
         bestStreak={bestStreak}
         rounds={rounds}
-        onPlayAgain={resetGame}
+        onPlayAgain={(d) => {
+          if (d === difficulty) resetGame();
+          else router.push(`/game?difficulty=${d}`);
+        }}
       />
     );
   }

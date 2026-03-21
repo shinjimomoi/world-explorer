@@ -1,7 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useNavbar, type GameNavState } from "@/app/context/navbar";
+import DifficultyModal from "./DifficultyModal";
+import type { Difficulty } from "@/app/game/WorldMap";
 
 export default function Navbar() {
   const { state } = useNavbar();
@@ -11,23 +15,39 @@ export default function Navbar() {
 // ─── Regular navbar ───────────────────────────────────────────────────────────
 
 function RegularNavbar() {
+  const router = useRouter();
+  const [showModal, setShowModal] = useState(false);
+
+  function handleSelect(difficulty: Difficulty) {
+    setShowModal(false);
+    router.push(`/game?difficulty=${difficulty}`);
+  }
+
   return (
-    <header className="flex h-[52px] shrink-0 items-center justify-between border-b border-border bg-surface px-4 sm:px-6">
-      <Link
-        href="/"
-        className="text-base font-semibold tracking-wide text-foreground transition-colors hover:text-accent-hover"
-      >
-        World Explorer
-      </Link>
-      <nav className="flex gap-6 text-sm text-foreground-muted">
-        <Link href="/game" className="transition-colors hover:text-foreground">
-          Play
+    <>
+      <header className="flex h-[52px] shrink-0 items-center justify-between border-b border-border bg-surface px-4 sm:px-6">
+        <Link
+          href="/"
+          className="text-base font-semibold tracking-wide text-foreground transition-colors hover:text-accent-hover"
+        >
+          World Explorer
         </Link>
-        <Link href="/leaderboard" className="transition-colors hover:text-foreground">
-          Leaderboard
-        </Link>
-      </nav>
-    </header>
+        <nav className="flex gap-6 text-sm text-foreground-muted">
+          <button
+            onClick={() => setShowModal(true)}
+            className="transition-colors hover:text-foreground"
+          >
+            Play
+          </button>
+          <Link href="/leaderboard" className="transition-colors hover:text-foreground">
+            Leaderboard
+          </Link>
+        </nav>
+      </header>
+      {showModal && (
+        <DifficultyModal onSelect={handleSelect} onClose={() => setShowModal(false)} />
+      )}
+    </>
   );
 }
 
