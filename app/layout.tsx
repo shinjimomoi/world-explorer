@@ -19,9 +19,39 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://world-explorer.vercel.app";
+
 export const metadata: Metadata = {
-  title: "World Explorer",
-  description: "Explore the world, one country at a time.",
+  title: "World Explorer - Capital City Quiz",
+  description:
+    "Test your world geography knowledge! Guess the location of capital cities on an interactive map. How many can you find?",
+  metadataBase: new URL(siteUrl),
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "World Explorer - Capital City Quiz",
+    description:
+      "Test your world geography knowledge! Guess the location of capital cities on an interactive map. How many can you find?",
+    url: siteUrl,
+    siteName: "World Explorer",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "World Explorer - Capital City Quiz",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "World Explorer - Capital City Quiz",
+    description:
+      "Test your world geography knowledge! Guess the location of capital cities on an interactive map. How many can you find?",
+    images: ["/og-image.png"],
+  },
 };
 
 export default function RootLayout({
