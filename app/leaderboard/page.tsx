@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { getTopScores, type LeaderboardEntry } from "@/lib/leaderboard";
 import { Flame } from "lucide-react";
@@ -8,6 +8,14 @@ import { Flame } from "lucide-react";
 const TABS = ["All", "Africa", "Americas", "Asia", "Europe", "Oceania", "Microstates"] as const;
 
 export default function LeaderboardPage() {
+  return (
+    <Suspense>
+      <LeaderboardContent />
+    </Suspense>
+  );
+}
+
+function LeaderboardContent() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get("category") ?? "All";
   const [tab, setTab] = useState(
