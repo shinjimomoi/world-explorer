@@ -4,20 +4,15 @@ interface ScoreCardProps {
   totalScore: number;
   bestStreak: number;
   difficulty: "easy" | "hard";
+  category: string;
   rating: string;
   maxScore: number;
 }
 
 const ScoreCard = React.forwardRef<HTMLDivElement, ScoreCardProps>(
-  function ScoreCard({ totalScore, bestStreak, difficulty, rating, maxScore }, ref) {
+  function ScoreCard({ totalScore, bestStreak, difficulty, category, rating, maxScore }, ref) {
     const pct = Math.min(100, Math.round((totalScore / maxScore) * 100));
-    const color = pct >= 80 ? "#22c55e" : pct >= 50 ? "#eab308" : "#ef4444";
-
-    // Dot grid — 5 × 5 top-right decoration
-    const dots = Array.from({ length: 25 }, (_, i) => ({
-      row: Math.floor(i / 5),
-      col: i % 5,
-    }));
+    const color = pct >= 80 ? "#4ade80" : pct >= 50 ? "#fbbf24" : "#f87171";
 
     return (
       <div
@@ -32,8 +27,8 @@ const ScoreCard = React.forwardRef<HTMLDivElement, ScoreCardProps>(
           height: 630,
           overflow: "hidden",
           fontFamily: "Arial, Helvetica, sans-serif",
-          background: "#0f1420",
-          color: "#e6edf3",
+          background: "#0a0a0a",
+          color: "#f0f0f0",
           boxSizing: "border-box",
         }}
       >
@@ -42,26 +37,10 @@ const ScoreCard = React.forwardRef<HTMLDivElement, ScoreCardProps>(
           style={{
             position: "absolute",
             inset: 28,
-            border: "1.5px solid #30363d",
+            border: "1px solid #222222",
             borderRadius: 20,
           }}
         />
-
-        {/* Dot grid — top right */}
-        {dots.map(({ row, col }, i) => (
-          <div
-            key={i}
-            style={{
-              position: "absolute",
-              top: 72 + row * 30,
-              right: 72 + col * 30,
-              width: 5,
-              height: 5,
-              borderRadius: "50%",
-              background: "#30363d",
-            }}
-          />
-        ))}
 
         {/* Vertical accent line — left side */}
         <div
@@ -70,8 +49,8 @@ const ScoreCard = React.forwardRef<HTMLDivElement, ScoreCardProps>(
             left: 80,
             top: 120,
             bottom: 120,
-            width: 3,
-            borderRadius: 3,
+            width: 2,
+            borderRadius: 2,
             background: `linear-gradient(to bottom, transparent, ${color}, transparent)`,
           }}
         />
@@ -92,15 +71,15 @@ const ScoreCard = React.forwardRef<HTMLDivElement, ScoreCardProps>(
           {/* App name */}
           <div
             style={{
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: 600,
-              letterSpacing: "0.18em",
+              letterSpacing: "0.08em",
               textTransform: "uppercase",
-              color: "#8b949e",
+              color: "#666666",
               marginBottom: 18,
             }}
           >
-            🌍 World Explorer
+            World Explorer
           </div>
 
           {/* Rating */}
@@ -108,7 +87,7 @@ const ScoreCard = React.forwardRef<HTMLDivElement, ScoreCardProps>(
             style={{
               fontSize: 36,
               fontWeight: 700,
-              color: "#e6edf3",
+              color: "#f0f0f0",
               marginBottom: 12,
               textAlign: "center",
             }}
@@ -132,7 +111,7 @@ const ScoreCard = React.forwardRef<HTMLDivElement, ScoreCardProps>(
           </div>
 
           {/* "pts" label */}
-          <div style={{ fontSize: 20, color: "#8b949e", marginBottom: 24 }}>
+          <div style={{ fontSize: 20, color: "#666666", marginBottom: 24 }}>
             pts
           </div>
 
@@ -140,9 +119,9 @@ const ScoreCard = React.forwardRef<HTMLDivElement, ScoreCardProps>(
           <div
             style={{
               width: 560,
-              height: 10,
-              background: "#21262d",
-              borderRadius: 10,
+              height: 6,
+              background: "#1a1a1a",
+              borderRadius: 6,
               overflow: "hidden",
               marginBottom: 32,
             }}
@@ -152,17 +131,17 @@ const ScoreCard = React.forwardRef<HTMLDivElement, ScoreCardProps>(
                 width: `${pct}%`,
                 height: "100%",
                 background: color,
-                borderRadius: 10,
+                borderRadius: 6,
               }}
             />
           </div>
 
-          {/* Streak + difficulty badges */}
+          {/* Streak + difficulty + category badges */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 16,
+              gap: 12,
               marginBottom: 40,
             }}
           >
@@ -170,12 +149,12 @@ const ScoreCard = React.forwardRef<HTMLDivElement, ScoreCardProps>(
               <div
                 style={{
                   padding: "7px 18px",
-                  background: "rgba(251,191,36,0.1)",
-                  border: "1px solid rgba(251,191,36,0.35)",
+                  background: "rgba(74,222,128,0.1)",
+                  border: "1px solid rgba(74,222,128,0.25)",
                   borderRadius: 999,
-                  fontSize: 17,
-                  fontWeight: 700,
-                  color: "#fbbf24",
+                  fontSize: 16,
+                  fontWeight: 600,
+                  color: "#4ade80",
                 }}
               >
                 🔥 Best Streak: {bestStreak}
@@ -184,22 +163,37 @@ const ScoreCard = React.forwardRef<HTMLDivElement, ScoreCardProps>(
             <div
               style={{
                 padding: "7px 18px",
-                background: "rgba(56,139,253,0.1)",
-                border: "1px solid rgba(56,139,253,0.35)",
+                background: "rgba(240,240,240,0.06)",
+                border: "1px solid rgba(240,240,240,0.15)",
                 borderRadius: 999,
-                fontSize: 17,
-                fontWeight: 700,
-                color: "#388bfd",
+                fontSize: 16,
+                fontWeight: 600,
+                color: "#f0f0f0",
               }}
             >
-              {difficulty === "easy" ? "Easy Mode" : "Hard Mode"}
+              {difficulty === "easy" ? "Easy" : "Hard"}
             </div>
+            {category !== "All World" && (
+              <div
+                style={{
+                  padding: "7px 18px",
+                  background: "rgba(240,240,240,0.06)",
+                  border: "1px solid rgba(240,240,240,0.15)",
+                  borderRadius: 999,
+                  fontSize: 16,
+                  fontWeight: 600,
+                  color: "#f0f0f0",
+                }}
+              >
+                {category}
+              </div>
+            )}
           </div>
 
           {/* CTA */}
-          <div style={{ fontSize: 17, color: "#8b949e", textAlign: "center" }}>
+          <div style={{ fontSize: 16, color: "#666666", textAlign: "center" }}>
             Can you beat me?{" "}
-            <span style={{ color: "#388bfd", fontWeight: 600 }}>
+            <span style={{ color: "#4ade80", fontWeight: 600 }}>
               world-explorer-five-liard.vercel.app
             </span>
           </div>

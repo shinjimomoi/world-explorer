@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0d1117;
-  --surface: #161b22;
-  --surface-elevated: #21262d;
-  --border: #30363d;
-  --foreground: #e6edf3;
-  --foreground-muted: #8b949e;
-  --accent: #388bfd;
-  --accent-hover: #58a6ff;
+  --background: #0a0a0a;
+  --surface: #111111;
+  --surface-elevated: #1a1a1a;
+  --border: #222222;
+  --foreground: #f0f0f0;
+  --foreground-muted: #666666;
+  --accent: #4ade80;
+  --accent-hover: #86efac;
 }
 
 @theme inline {
@@ -36,18 +36,27 @@ body {
 }
 
 @keyframes pinDrop {
-  from { transform: translateY(-28px); opacity: 0; }
-  65%  { transform: translateY(4px);   opacity: 1; }
-  to   { transform: translateY(0);     opacity: 1; }
+  from { transform: translateY(-20px) scale(0); opacity: 0; }
+  60%  { transform: translateY(2px) scale(1.2); opacity: 1; }
+  to   { transform: translateY(0) scale(1);     opacity: 1; }
 }
 
 @keyframes pulseRing {
-  from { transform: scale(1);   opacity: 0.75; }
-  to   { transform: scale(3.2); opacity: 0;    }
+  from { transform: scale(1);   opacity: 0.6; }
+  to   { transform: scale(3.2); opacity: 0;   }
 }
 
 @keyframes popIn {
   from { transform: scale(0.6); opacity: 0; }
   60%  { transform: scale(1.18); opacity: 1; }
   to   { transform: scale(1);   opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes lineGrow {
+  to { stroke-dashoffset: 0; }
 }

@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useNavbar, type GameNavState } from "@/app/context/navbar";
 import DifficultyModal from "./DifficultyModal";
 import type { Difficulty } from "@/app/game/WorldMap";
+import type { Category } from "@/data/categories";
+import { X, Flame } from "lucide-react";
 
 export default function Navbar() {
   const { state } = useNavbar();
@@ -18,17 +20,17 @@ function RegularNavbar() {
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
 
-  function handleSelect(difficulty: Difficulty) {
+  function handleSelect(difficulty: Difficulty, category: Category) {
     setShowModal(false);
-    router.push(`/game?difficulty=${difficulty}`);
+    router.push(`/game?difficulty=${difficulty}&category=${category}`);
   }
 
   return (
     <>
-      <header className="flex h-[52px] shrink-0 items-center justify-between border-b border-border bg-surface px-4 sm:px-6">
+      <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-surface px-4 sm:px-6">
         <Link
           href="/"
-          className="text-base font-semibold tracking-wide text-foreground transition-colors hover:text-accent-hover"
+          className="text-base font-semibold tracking-tight text-foreground transition-colors hover:text-accent"
         >
           World Explorer
         </Link>
@@ -55,7 +57,7 @@ function RegularNavbar() {
 
 function GameNavbar({ s }: { s: GameNavState }) {
   return (
-    <header className="relative flex h-[52px] shrink-0 items-center border-b border-border bg-surface px-3 sm:px-4">
+    <header className="relative flex h-12 shrink-0 items-center border-b border-border bg-surface px-3 sm:px-4">
       {/* Left: quit + logo */}
       <div className="flex shrink-0 items-center gap-2">
         <button
@@ -63,20 +65,9 @@ function GameNavbar({ s }: { s: GameNavState }) {
           aria-label="Quit game"
           className="flex h-8 w-8 items-center justify-center rounded-md text-foreground-muted transition-colors hover:bg-surface-elevated hover:text-foreground"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 16 16"
-            className="h-3.5 w-3.5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-          >
-            <line x1="2" y1="2" x2="14" y2="14" />
-            <line x1="14" y1="2" x2="2" y2="14" />
-          </svg>
+          <X className="h-4 w-4" strokeWidth={1.5} />
         </button>
-        <span className="hidden text-sm font-semibold text-foreground sm:block">
+        <span className="hidden text-base font-semibold tracking-tight text-foreground sm:block">
           World Explorer
         </span>
       </div>
@@ -88,7 +79,7 @@ function GameNavbar({ s }: { s: GameNavState }) {
           {!s.isResult && (
             <span className="text-foreground-muted">
               {" · Find "}
-              <span style={{ color: "#58a6ff" }}>{s.capital}</span>
+              <span className="text-accent">{s.capital}</span>
               {s.hint && ` · ${s.hint}`}
             </span>
           )}
@@ -96,12 +87,14 @@ function GameNavbar({ s }: { s: GameNavState }) {
       </div>
 
       {/* Right: streak + round + score */}
-      <div className="shrink-0 whitespace-nowrap text-right text-xs text-foreground-muted">
+      <div className="shrink-0 whitespace-nowrap text-right font-mono text-xs text-foreground-muted">
         {s.streak >= 3 && (
-          <span className="mr-1.5 font-semibold text-amber-400">🔥{s.streak}</span>
+          <span className="mr-1.5 inline-flex items-center gap-0.5 font-semibold text-accent">
+            <Flame className="h-3 w-3" strokeWidth={1.5} />{s.streak}
+          </span>
         )}
         <span>
-          Round {s.round}/{s.totalRounds} · {s.totalScore.toLocaleString()}
+          R{s.round}/{s.totalRounds} · {s.totalScore.toLocaleString()}
         </span>
       </div>
 

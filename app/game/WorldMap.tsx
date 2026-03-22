@@ -12,7 +12,6 @@ import {
   useMapContext,
 } from "react-simple-maps";
 import {
-  countries,
   countriesByNumericCode,
   type Country,
 } from "@/data/countries";
@@ -20,6 +19,8 @@ import { saveScore } from "@/lib/leaderboard";
 import { useNavbar } from "@/app/context/navbar";
 import DifficultyModal from "@/app/components/DifficultyModal";
 import ScoreCard from "@/app/components/ScoreCard";
+import { filterCountries, type Category } from "@/data/categories";
+import { Flame, CheckCircle, Camera, RotateCcw } from "lucide-react";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -88,8 +89,8 @@ function haversineKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function shuffled(): Country[] {
-  return [...countries].sort(() => Math.random() - 0.5);
+function shuffled(pool: Country[]): Country[] {
+  return [...pool].sort(() => Math.random() - 0.5);
 }
 
 function toSVGCoords(e: React.MouseEvent, el: SVGGraphicsElement): DOMPoint {
@@ -121,11 +122,11 @@ function streakMultiplier(streak: number): {
   return { multiplier: 1.0, label: "" };
 }
 
-/** green ≥800 · yellow ≥500 · red <500 */
+/** green ≥800 · amber ≥500 · red <500 */
 function ptColor(points: number): string {
-  if (points >= 800) return "#22c55e";
-  if (points >= 500) return "#eab308";
-  return "#ef4444";
+  if (points >= 800) return "#4ade80";
+  if (points >= 500) return "#fbbf24";
+  return "#f87171";
 }
 
 function getZoomConfig(
@@ -275,20 +276,20 @@ const MapCanvas = memo(function MapCanvas({
                 }}
                 style={{
                   default: {
-                    fill: "#1a2d42",
-                    stroke: "#243b55",
+                    fill: "#1a1a1a",
+                    stroke: "#2a2a2a",
                     strokeWidth: 0.5,
                     outline: "none",
                   },
                   hover: {
-                    fill: disabled ? "#1a2d42" : "#2d4a6a",
-                    stroke: disabled ? "#243b55" : "#3a6a9a",
+                    fill: disabled ? "#1a1a1a" : "#222222",
+                    stroke: disabled ? "#2a2a2a" : "#333333",
                     strokeWidth: 0.5,
                     outline: "none",
                   },
                   pressed: {
-                    fill: "#388bfd",
-                    stroke: "#58a6ff",
+                    fill: "#1e2a1e",
+                    stroke: "#2a3a2a",
                     strokeWidth: 0.75,
                     outline: "none",
                   },
@@ -308,30 +309,35 @@ const MapCanvas = memo(function MapCanvas({
                   <Line
                     from={[result.guessLng, result.guessLat]}
                     to={[result.country.capitalLng, result.country.capitalLat]}
-                    stroke="#fbbf24"
-                    strokeWidth={1.5}
+                    stroke="#444444"
+                    strokeWidth={1}
                     strokeLinecap="round"
-                    strokeDasharray="5,4"
+                    strokeDasharray="4,3"
+                    style={{
+                      strokeDashoffset: "500",
+                      animation:
+                        "lineGrow 0.4s ease-out 0.4s forwards",
+                    }}
                   />
                   <Marker coordinates={[result.guessLng, result.guessLat]}>
                     <g
                       style={{
                         animation:
-                          "pinDrop 0.42s cubic-bezier(0.34,1.56,0.64,1) both",
+                          "pinDrop 0.4s cubic-bezier(0.34,1.56,0.64,1) both",
                       }}
                     >
-                      <circle
-                        r={7}
-                        fill="#ef4444"
+                      <path
+                        d="M0,-5 C-2.76,-5 -5,-2.76 -5,0 C-5,2.76 0,7 0,7 C0,7 5,2.76 5,0 C5,-2.76 2.76,-5 0,-5Z"
+                        fill="#f87171"
                         stroke="#fff"
-                        strokeWidth={2}
+                        strokeWidth={1.5}
                       />
                       <text
                         textAnchor="middle"
-                        y={-13}
+                        y={-10}
                         style={{
-                          fontSize: 10,
-                          fill: "#fca5a5",
+                          fontSize: 9,
+                          fill: "#999999",
                           fontFamily: "sans-serif",
                           pointerEvents: "none",
                         }}
@@ -352,10 +358,10 @@ const MapCanvas = memo(function MapCanvas({
             >
               {/* Pulsing ring */}
               <circle
-                r={11}
+                r={8}
                 fill="none"
-                stroke="#22c55e"
-                strokeWidth={2}
+                stroke="#4ade80"
+                strokeWidth={1.5}
                 style={
                   {
                     animation: "pulseRing 1.6s ease-out infinite",
@@ -364,20 +370,25 @@ const MapCanvas = memo(function MapCanvas({
                   } as React.CSSProperties
                 }
               />
-              {/* Pin — drops in 0.1 s after player pin */}
+              {/* Pin — drops 300ms after player pin */}
               <g
                 style={{
                   animation:
-                    "pinDrop 0.42s cubic-bezier(0.34,1.56,0.64,1) 0.1s both",
+                    "pinDrop 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.3s both",
                 }}
               >
-                <circle r={7} fill="#22c55e" stroke="#fff" strokeWidth={2} />
+                <path
+                  d="M0,-5 C-2.76,-5 -5,-2.76 -5,0 C-5,2.76 0,7 0,7 C0,7 5,2.76 5,0 C5,-2.76 2.76,-5 0,-5Z"
+                  fill="#4ade80"
+                  stroke="#fff"
+                  strokeWidth={1.5}
+                />
                 <text
                   textAnchor="middle"
-                  y={-13}
+                  y={-10}
                   style={{
-                    fontSize: 10,
-                    fill: "#86efac",
+                    fontSize: 9,
+                    fill: "#4ade80",
                     fontFamily: "sans-serif",
                     fontWeight: 600,
                     pointerEvents: "none",
@@ -404,8 +415,8 @@ function QuitDialog({
   onCancel: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-6 shadow-2xl">
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 px-4 backdrop-blur-xl">
+      <div className="w-full max-w-sm rounded-2xl border border-[#222222] bg-surface p-6">
         <h2 className="text-lg font-bold text-foreground">Quit game?</h2>
         <p className="mt-2 text-sm text-foreground-muted">
           Are you sure you want to quit? Your progress will be lost.
@@ -413,13 +424,13 @@ function QuitDialog({
         <div className="mt-6 flex justify-end gap-3">
           <button
             onClick={onCancel}
-            className="rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface-elevated"
+            className="rounded-lg border border-[#333333] px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:border-[#555555]"
           >
             Keep playing
           </button>
           <button
             onClick={onConfirm}
-            className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500"
+            className="rounded-lg bg-[#f87171] px-4 py-2 text-sm font-semibold text-[#0a0a0a] transition-colors hover:bg-[#fca5a5]"
           >
             Quit
           </button>
@@ -450,37 +461,37 @@ function ResultOverlay({
   const { label: streakLabel } = streakMultiplier(newStreak);
 
   const headline = result.timedOut
-    ? "⏱ Time's up!"
+    ? "Time's up"
     : result.basePoints >= 900
-    ? "Outstanding!"
+    ? "Outstanding"
     : result.basePoints >= 700
-    ? "Great shot!"
+    ? "Great shot"
     : result.basePoints >= 500
-    ? "Not bad!"
-    : "Keep exploring!";
+    ? "Not bad"
+    : "Keep exploring";
 
   return (
-    // Bottom sheet: sits at the foot of the game wrapper, never covers the pins
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10">
       <div
-        className="pointer-events-auto rounded-t-2xl border-t border-x border-white/10 px-4 py-3"
+        className="pointer-events-auto rounded-t-2xl border-t border-x border-[#222222] px-4 py-3"
         style={{
-          background: "rgba(15, 20, 30, 0.85)",
-          backdropFilter: "blur(8px)",
+          background: "rgba(17, 17, 17, 0.92)",
+          backdropFilter: "blur(20px)",
+          animation: "slideUp 300ms ease-out both",
         }}
       >
         {/* Row 1: headline + streak badge */}
         <div className="mb-2 flex items-center justify-between">
           <p
             className="text-base font-bold"
-            style={{ color: result.timedOut ? "#ef4444" : color }}
+            style={{ color: result.timedOut ? "#f87171" : color }}
           >
             {headline}
           </p>
           {newStreak >= 1 && (
             <span
               key={streakLabel || String(newStreak)}
-              className="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-semibold text-amber-400"
+              className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 font-mono text-xs font-semibold text-accent"
               style={
                 newStreak >= 3
                   ? {
@@ -490,20 +501,20 @@ function ResultOverlay({
                   : undefined
               }
             >
-              🔥 {newStreak}
+              <Flame className="h-3 w-3" strokeWidth={1.5} /> {newStreak}
               {streakLabel ? ` · ${streakLabel}` : ""}
             </span>
           )}
         </div>
 
-        {/* Row 2: distance · points · score bar all in one line */}
+        {/* Row 2: distance · points · score bar */}
         <div className="mb-2 flex items-center gap-3">
-          <span className="text-sm text-white/60">
+          <span className="font-mono text-sm text-[#666666]">
             {result.timedOut || result.distanceKm === null
               ? "—"
               : `${Math.round(result.distanceKm).toLocaleString()} km`}
           </span>
-          <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-white/10">
+          <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-[#1a1a1a]">
             <div
               className="h-full rounded-full transition-[width] duration-700"
               style={{ width: `${pct}%`, backgroundColor: color }}
@@ -511,11 +522,11 @@ function ResultOverlay({
           </div>
           <div className="shrink-0 text-right">
             {result.multiplier > 1.0 && !result.timedOut && (
-              <div className="mb-0.5 text-xs leading-none text-white/50 tabular-nums">
+              <div className="mb-0.5 font-mono text-xs leading-none text-[#666666] tabular-nums">
                 {result.basePoints.toLocaleString()} × {result.multiplier}×
               </div>
             )}
-            <span className="text-xl font-bold tabular-nums" style={{ color }}>
+            <span className="font-mono text-xl font-bold tabular-nums" style={{ color }}>
               +{result.points.toLocaleString()}
             </span>
           </div>
@@ -523,20 +534,20 @@ function ResultOverlay({
 
         {/* Row 3: pin legend or timeout message */}
         {!result.timedOut ? (
-          <div className="mb-2 flex gap-4 text-xs text-white/50">
+          <div className="mb-2 flex gap-4 text-xs text-[#666666]">
             <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500" />
+              <span className="inline-block h-2 w-2 rounded-full bg-[#4ade80]" />
               {result.country.capital}
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
+              <span className="inline-block h-2 w-2 rounded-full bg-[#f87171]" />
               Your guess
             </span>
           </div>
         ) : (
-          <p className="mb-2 text-xs text-white/50">
+          <p className="mb-2 text-xs text-[#666666]">
             Capital of {result.country.name} is{" "}
-            <span className="font-semibold text-green-400">
+            <span className="font-semibold text-accent">
               {result.country.capital}
             </span>
             .
@@ -545,20 +556,20 @@ function ResultOverlay({
 
         {/* Row 4: countdown + next button */}
         <div className="flex items-center justify-between">
-          <p className="text-xs text-white/40">
+          <p className="text-xs text-[#444444]">
             {isLastRound ? "Results in " : "Next in "}
-            <span className="font-semibold text-white/70">{countdown}</span>…
+            <span className="font-semibold text-[#888888]">{countdown}</span>…
           </p>
           <button
             onClick={onAdvance}
-            className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-accent-hover"
+            className="rounded-lg bg-[#f0f0f0] px-3 py-1.5 text-xs font-semibold text-[#0a0a0a] transition-colors hover:bg-white"
           >
             {isLastRound ? "See results →" : "Next →"}
           </button>
         </div>
 
         {/* Auto-advance progress */}
-        <div className="mt-2 h-0.5 overflow-hidden rounded-full bg-white/10">
+        <div className="mt-2 h-0.5 overflow-hidden rounded-full bg-[#1a1a1a]">
           <div
             key={`${result.country.numericCode}-${result.guessLat}-${result.guessLng}`}
             className="h-full rounded-full bg-accent"
@@ -576,14 +587,16 @@ function EndScreen({
   totalScore,
   bestStreak,
   difficulty,
+  category,
   rounds,
   onPlayAgain,
 }: {
   totalScore: number;
   bestStreak: number;
   difficulty: Difficulty;
+  category: Category;
   rounds: RoundRecord[];
-  onPlayAgain: (difficulty: Difficulty) => void;
+  onPlayAgain: (difficulty: Difficulty, category: Category) => void;
 }) {
   const [showDifficultyModal, setShowDifficultyModal] = useState(false);
   const [name, setName] = useState("");
@@ -595,8 +608,9 @@ function EndScreen({
   >("idle");
   const scoreCardRef = useRef<HTMLDivElement>(null);
 
+  const categoryLabel = category === "All World" ? "" : ` (${category})`;
   const shareText =
-    `🌍 I scored ${totalScore.toLocaleString()} pts on World Explorer! Best streak: ${bestStreak} 🔥 ` +
+    `🌍 I scored ${totalScore.toLocaleString()} pts on World Explorer${categoryLabel}! Best streak: ${bestStreak} 🔥 ` +
     `Can you beat me? https://world-explorer-five-liard.vercel.app`;
 
   function handleTwitter() {
@@ -656,7 +670,7 @@ function EndScreen({
     setSaving(true);
     setSaveError(null);
     try {
-      await saveScore(trimmed, totalScore, bestStreak);
+      await saveScore(trimmed, totalScore, bestStreak, category);
       setSaved(true);
     } catch {
       setSaveError("Failed to save. Please try again.");
@@ -670,7 +684,7 @@ function EndScreen({
       <div className="mx-auto w-full max-w-xl px-4 py-6 sm:py-8">
         {/* Hero */}
         <div className="mb-6 text-center sm:mb-8">
-          <p className="mb-1 text-sm font-medium uppercase tracking-widest text-foreground-muted">
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
             Session Complete
           </p>
           <h1 className="text-3xl font-bold text-foreground sm:text-4xl">
@@ -682,11 +696,11 @@ function EndScreen({
         <div className="mb-4 rounded-xl border border-border bg-surface p-4 sm:mb-6 sm:p-5">
           <div className="mb-4 flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-wider text-foreground-muted">
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
                 Total Score
               </p>
               <p
-                className="text-4xl font-bold tabular-nums sm:text-5xl"
+                className="font-mono text-4xl font-bold tabular-nums sm:text-5xl"
                 style={{ color }}
               >
                 {totalScore.toLocaleString()}
@@ -696,15 +710,19 @@ function EndScreen({
               </p>
             </div>
             <div className="text-right">
-              <p className="text-xs uppercase tracking-wider text-foreground-muted">
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
                 Best Streak
               </p>
-              <p className="mt-1 text-3xl font-bold text-amber-400 sm:text-4xl">
-                {bestStreak > 0 ? `🔥 ${bestStreak}` : "—"}
+              <p className="mt-1 font-mono text-3xl font-bold text-accent sm:text-4xl">
+                {bestStreak > 0 ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Flame className="h-6 w-6" strokeWidth={1.5} /> {bestStreak}
+                  </span>
+                ) : "—"}
               </p>
             </div>
           </div>
-          <div className="h-3 w-full overflow-hidden rounded-full bg-surface-elevated">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#1a1a1a]">
             <div
               className="h-full rounded-full transition-[width] duration-1000"
               style={{ width: `${pct}%`, backgroundColor: color }}
@@ -716,7 +734,7 @@ function EndScreen({
         <div className="mb-4 rounded-xl border border-border bg-surface p-4 sm:mb-6 sm:p-5">
           {saved ? (
             <div className="flex items-center gap-3">
-              <span className="text-lg text-green-400">✓</span>
+              <CheckCircle className="h-5 w-5 text-accent" strokeWidth={1.5} />
               <div>
                 <p className="text-sm font-semibold text-foreground">
                   Score saved!
@@ -731,7 +749,7 @@ function EndScreen({
             </div>
           ) : (
             <>
-              <p className="mb-3 text-sm font-semibold text-foreground">
+              <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
                 Save to Leaderboard
               </p>
               <div className="flex gap-2">
@@ -748,7 +766,7 @@ function EndScreen({
                 <button
                   onClick={handleSave}
                   disabled={!name.trim() || saving}
-                  className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg bg-[#f0f0f0] px-4 py-2 text-sm font-semibold text-[#0a0a0a] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {saving ? "Saving…" : "Save"}
                 </button>
@@ -763,7 +781,7 @@ function EndScreen({
         {/* Round breakdown */}
         <div className="mb-4 overflow-hidden rounded-xl border border-border bg-surface sm:mb-6">
           <div className="border-b border-border px-4 py-3">
-            <p className="text-sm font-semibold text-foreground">
+            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
               Round Breakdown
             </p>
           </div>
@@ -815,7 +833,7 @@ function EndScreen({
 
         {/* Social share buttons */}
         <div className="mb-4 sm:mb-6">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-foreground-muted">
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
             Share your score
           </p>
           <div className="grid grid-cols-3 gap-2">
@@ -868,7 +886,7 @@ function EndScreen({
 
           {instagramStatus === "saved" && (
             <p className="mt-2 text-center text-xs text-foreground-muted">
-              📸 Image saved! Open Instagram and share from your camera roll.
+              <span className="inline-flex items-center gap-1"><Camera className="h-3.5 w-3.5" strokeWidth={1.5} /> Image saved! Open Instagram and share from your camera roll.</span>
             </p>
           )}
         </div>
@@ -876,16 +894,16 @@ function EndScreen({
         {/* Play Again */}
         <button
           onClick={() => setShowDifficultyModal(true)}
-          className="w-full rounded-lg bg-accent py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+          className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#f0f0f0] py-3 text-sm font-semibold text-[#0a0a0a] transition-colors hover:bg-white"
         >
-          Play Again
+          <RotateCcw className="h-4 w-4" strokeWidth={1.5} /> Play Again
         </button>
 
         {showDifficultyModal && (
           <DifficultyModal
-            onSelect={(d) => {
+            onSelect={(d, c) => {
               setShowDifficultyModal(false);
-              onPlayAgain(d);
+              onPlayAgain(d, c);
             }}
             onClose={() => setShowDifficultyModal(false)}
           />
@@ -897,6 +915,7 @@ function EndScreen({
           totalScore={totalScore}
           bestStreak={bestStreak}
           difficulty={difficulty}
+          category={category}
           rating={rating}
           maxScore={maxScore}
         />
@@ -907,7 +926,13 @@ function EndScreen({
 
 // ─── WorldMap — game root ─────────────────────────────────────────────────────
 
-export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
+export default function WorldMap({
+  difficulty,
+  category,
+}: {
+  difficulty: Difficulty;
+  category: Category;
+}) {
   const roundSeconds = difficulty === "hard" ? 15 : 30;
   const router = useRouter();
   const { setState: setNavbarState } = useNavbar();
@@ -921,8 +946,10 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
   const streakRef = useRef(0);
   const bestStreakRef = useRef(0);
 
+  const pool = filterCountries(category);
+
   function drawNext(): Country {
-    if (queueRef.current.length === 0) queueRef.current = shuffled();
+    if (queueRef.current.length === 0) queueRef.current = shuffled(pool);
     return queueRef.current.pop()!;
   }
 
@@ -1028,7 +1055,7 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
 
   // ── reset / play again ────────────────────────────────────────────────────
   const resetGame = useCallback(() => {
-    queueRef.current = shuffled();
+    queueRef.current = shuffled(pool);
     roundRef.current = 1;
     streakRef.current = 0;
     bestStreakRef.current = 0;
@@ -1103,10 +1130,10 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
       result !== null ? 0 : (timerSecondsLeft / roundSeconds) * 100;
     const timerColor =
       timerSecondsLeft > roundSeconds * 0.5
-        ? "#22c55e"
+        ? "#4ade80"
         : timerSecondsLeft > roundSeconds * 0.25
-        ? "#eab308"
-        : "#ef4444";
+        ? "#fbbf24"
+        : "#f87171";
     setNavbarState({
       active: true,
       countryName: currentCountry.name,
@@ -1152,10 +1179,11 @@ export default function WorldMap({ difficulty }: { difficulty: Difficulty }) {
         totalScore={totalScore}
         bestStreak={bestStreak}
         difficulty={difficulty}
+        category={category}
         rounds={rounds}
-        onPlayAgain={(d) => {
-          if (d === difficulty) resetGame();
-          else router.push(`/game?difficulty=${d}`);
+        onPlayAgain={(d, c) => {
+          if (d === difficulty && c === category) resetGame();
+          else router.push(`/game?difficulty=${d}&category=${c}`);
         }}
       />
     );

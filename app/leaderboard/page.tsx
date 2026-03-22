@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getTopScores, type LeaderboardEntry } from "@/lib/leaderboard";
+import { Flame } from "lucide-react";
 
 export default function LeaderboardPage() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -19,15 +20,15 @@ export default function LeaderboardPage() {
     <div className="flex flex-1 flex-col items-center overflow-y-auto px-4 py-10">
       <div className="w-full max-w-xl">
         <div className="mb-8 text-center">
-          <p className="mb-1 text-sm font-medium uppercase tracking-widest text-foreground-muted">
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
             Hall of Fame
           </p>
           <h1 className="text-4xl font-bold text-foreground">Leaderboard</h1>
         </div>
 
-        <div className="rounded-xl border border-border bg-surface overflow-hidden">
+        <div className="overflow-hidden rounded-2xl border border-border bg-surface">
           {loading ? (
-            <div className="divide-y divide-border">
+            <div className="divide-y divide-[#1a1a1a]">
               {Array.from({ length: 10 }).map((_, i) => (
                 <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse">
                   <div className="h-4 w-6 rounded bg-surface-elevated" />
@@ -41,13 +42,13 @@ export default function LeaderboardPage() {
               ))}
             </div>
           ) : error ? (
-            <div className="px-6 py-12 text-center text-red-400">{error}</div>
+            <div className="px-6 py-12 text-center text-[#f87171]">{error}</div>
           ) : entries.length === 0 ? (
             <div className="px-6 py-12 text-center">
               <p className="text-foreground-muted">No scores yet. Play a game to get on the board!</p>
               <a
                 href="/game"
-                className="mt-4 inline-block rounded-lg bg-accent px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+                className="mt-4 inline-block rounded-lg bg-[#f0f0f0] px-6 py-2.5 text-sm font-semibold text-[#0a0a0a] transition-colors hover:bg-white"
               >
                 Play Now
               </a>
@@ -56,38 +57,47 @@ export default function LeaderboardPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-foreground-muted w-10">#</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-foreground-muted">Player</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-foreground-muted text-right">Score</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-foreground-muted text-right">Streak</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-foreground-muted text-right hidden sm:table-cell">Date</th>
+                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted w-10">#</th>
+                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">Player</th>
+                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted text-right">Score</th>
+                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted text-right">Streak</th>
+                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted text-right hidden sm:table-cell">Region</th>
+                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted text-right hidden sm:table-cell">Date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
-                {entries.map((entry, i) => {
-                  const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
-                  const rankColor =
-                    i === 0 ? "#fbbf24" : i === 1 ? "#94a3b8" : i === 2 ? "#b45309" : undefined;
-                  return (
-                    <tr key={i} className="transition-colors hover:bg-surface-elevated">
-                      <td className="px-4 py-3 text-sm font-bold tabular-nums" style={{ color: rankColor }}>
-                        {medal ?? i + 1}
-                      </td>
-                      <td className="px-4 py-3 text-sm font-semibold text-foreground">
-                        {entry.name}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm font-bold tabular-nums text-accent">
-                        {entry.score.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm tabular-nums text-amber-400">
-                        {entry.bestStreak > 0 ? `🔥 ${entry.bestStreak}` : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-right text-xs text-foreground-muted hidden sm:table-cell">
-                        {new Date(entry.date).toLocaleDateString()}
-                      </td>
-                    </tr>
-                  );
-                })}
+              <tbody className="divide-y divide-[#1a1a1a]">
+                {entries.map((entry, i) => (
+                  <tr
+                    key={i}
+                    className="transition-colors hover:bg-surface-elevated"
+                    style={i < 3 ? { borderLeft: "2px solid #4ade80" } : undefined}
+                  >
+                    <td className="px-4 py-3 font-mono text-sm tabular-nums text-foreground-muted">
+                      {i + 1}
+                    </td>
+                    <td className="px-4 py-3 text-sm font-semibold text-foreground">
+                      {entry.name}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-sm font-bold tabular-nums text-accent">
+                      {entry.score.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-sm tabular-nums text-accent">
+                      {entry.bestStreak > 0 ? (
+                        <span className="inline-flex items-center justify-end gap-0.5">
+                          <Flame className="h-3 w-3" strokeWidth={1.5} /> {entry.bestStreak}
+                        </span>
+                      ) : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right hidden sm:table-cell">
+                      <span className="inline-block rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
+                        {entry.category}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-xs text-foreground-muted hidden sm:table-cell">
+                      {new Date(entry.date).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           )}
