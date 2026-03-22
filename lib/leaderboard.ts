@@ -20,12 +20,18 @@ export async function saveScore(
   if (error) throw error;
 }
 
-export async function getTopScores(): Promise<LeaderboardEntry[]> {
-  const { data, error } = await supabase
+export async function getTopScores(
+  category?: string,
+): Promise<LeaderboardEntry[]> {
+  let query = supabase
     .from("scores")
     .select("name, score, best_streak, category, created_at")
     .order("score", { ascending: false })
     .limit(10);
+  if (category && category !== "All") {
+    query = query.eq("category", category);
+  }
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []).map((row) => ({
     name: row.name,

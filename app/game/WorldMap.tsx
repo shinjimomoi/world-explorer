@@ -740,7 +740,7 @@ function EndScreen({
                   Score saved!
                 </p>
                 <a
-                  href="/leaderboard"
+                  href={`/leaderboard?category=${category === "All World" ? "All" : category}`}
                   className="text-xs text-accent transition-colors hover:text-accent-hover"
                 >
                   View leaderboard →

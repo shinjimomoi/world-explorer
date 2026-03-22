@@ -1,20 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { getTopScores, type LeaderboardEntry } from "@/lib/leaderboard";
 import { Flame } from "lucide-react";
 
+const TABS = ["All", "Africa", "Americas", "Asia", "Europe", "Oceania", "Microstates"] as const;
+
 export default function LeaderboardPage() {
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("category") ?? "All";
+  const [tab, setTab] = useState(
+    TABS.includes(initialTab as (typeof TABS)[number]) ? initialTab : "All",
+  );
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getTopScores()
+    setLoading(true);
+    setError(null);
+    getTopScores(tab === "All" ? undefined : tab)
       .then(setEntries)
       .catch(() => setError("Failed to load scores."))
       .finally(() => setLoading(false));
-  }, []);
+  }, [tab]);
 
   return (
     <div className="flex flex-1 flex-col items-center overflow-y-auto px-4 py-10">
@@ -24,6 +34,23 @@ export default function LeaderboardPage() {
             Hall of Fame
           </p>
           <h1 className="text-4xl font-bold text-foreground">Leaderboard</h1>
+        </div>
+
+        {/* Tabs */}
+        <div className="mb-4 flex gap-1 overflow-x-auto border-b border-border pb-px">
+          {TABS.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`shrink-0 px-3 py-2 text-xs font-medium transition-colors ${
+                tab === t
+                  ? "border-b-2 border-accent text-foreground"
+                  : "text-foreground-muted hover:text-foreground"
+              }`}
+            >
+              {t === "All" ? "All" : t}
+            </button>
+          ))}
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-border bg-surface">
@@ -45,7 +72,11 @@ export default function LeaderboardPage() {
             <div className="px-6 py-12 text-center text-[#f87171]">{error}</div>
           ) : entries.length === 0 ? (
             <div className="px-6 py-12 text-center">
-              <p className="text-foreground-muted">No scores yet. Play a game to get on the board!</p>
+              <p className="text-foreground-muted">
+                {tab === "All"
+                  ? "No scores yet. Play a game to get on the board!"
+                  : `No scores for ${tab} yet.`}
+              </p>
               <a
                 href="/game"
                 className="mt-4 inline-block rounded-lg bg-[#f0f0f0] px-6 py-2.5 text-sm font-semibold text-[#0a0a0a] transition-colors hover:bg-white"
@@ -61,7 +92,6 @@ export default function LeaderboardPage() {
                   <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">Player</th>
                   <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted text-right">Score</th>
                   <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted text-right">Streak</th>
-                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted text-right hidden sm:table-cell">Region</th>
                   <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted text-right hidden sm:table-cell">Date</th>
                 </tr>
               </thead>
@@ -87,11 +117,6 @@ export default function LeaderboardPage() {
                           <Flame className="h-3 w-3" strokeWidth={1.5} /> {entry.bestStreak}
                         </span>
                       ) : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right hidden sm:table-cell">
-                      <span className="inline-block rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
-                        {entry.category}
-                      </span>
                     </td>
                     <td className="px-4 py-3 text-right text-xs text-foreground-muted hidden sm:table-cell">
                       {new Date(entry.date).toLocaleDateString()}
