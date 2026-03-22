@@ -78,7 +78,7 @@ export default function LeaderboardPage() {
                   : `No scores for ${tab} yet.`}
               </p>
               <a
-                href="/game"
+                href={tab === "All" ? "/game" : `/game?category=${tab}`}
                 className="mt-4 inline-block rounded-lg bg-[#f0f0f0] px-6 py-2.5 text-sm font-semibold text-[#0a0a0a] transition-colors hover:bg-white"
               >
                 Play Now
