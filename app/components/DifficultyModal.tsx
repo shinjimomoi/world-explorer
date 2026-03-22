@@ -3,13 +3,17 @@
 import { useState } from "react";
 import type { Difficulty } from "@/app/game/WorldMap";
 import { CATEGORY_META, categoryCount, type Category } from "@/data/categories";
-import { Trophy, Globe, Skull, ChevronLeft, X } from "lucide-react";
+import { Globe, Sun, Compass, Mountain, Landmark, Waves, Minimize2, ChevronLeft, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 const ICON_MAP: Record<string, LucideIcon> = {
-  trophy: Trophy,
   globe: Globe,
-  skull: Skull,
+  sun: Sun,
+  compass: Compass,
+  mountain: Mountain,
+  landmark: Landmark,
+  waves: Waves,
+  minimize2: Minimize2,
 };
 
 export default function DifficultyModal({

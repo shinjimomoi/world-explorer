@@ -24,13 +24,13 @@ export const CATEGORY_META: {
   icon: string;
   label: string;
 }[] = [
-  { id: "All World", icon: "trophy", label: "All World" },
-  { id: "Africa", icon: "globe", label: "Africa" },
-  { id: "Americas", icon: "globe", label: "Americas" },
-  { id: "Asia", icon: "globe", label: "Asia" },
-  { id: "Europe", icon: "globe", label: "Europe" },
-  { id: "Oceania", icon: "globe", label: "Oceania" },
-  { id: "Microstates", icon: "skull", label: "Microstates" },
+  { id: "All World", icon: "globe", label: "All World" },
+  { id: "Africa", icon: "sun", label: "Africa" },
+  { id: "Americas", icon: "compass", label: "Americas" },
+  { id: "Asia", icon: "mountain", label: "Asia" },
+  { id: "Europe", icon: "landmark", label: "Europe" },
+  { id: "Oceania", icon: "waves", label: "Oceania" },
+  { id: "Microstates", icon: "minimize2", label: "Microstates" },
 ];
 
 // ─── continent lookup by ISO alpha-3 code ────────────────────────────────────
