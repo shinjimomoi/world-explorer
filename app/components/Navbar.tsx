@@ -37,11 +37,11 @@ function RegularNavbar() {
         <nav className="flex gap-6 text-sm text-foreground-muted">
           <button
             onClick={() => setShowModal(true)}
-            className="transition-colors hover:text-foreground"
+            className="cursor-pointer transition-all duration-150 hover:text-foreground"
           >
             Play
           </button>
-          <Link href="/leaderboard" className="transition-colors hover:text-foreground">
+          <Link href="/leaderboard" className="transition-all duration-150 hover:text-foreground">
             Leaderboard
           </Link>
         </nav>

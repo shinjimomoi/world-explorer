@@ -86,7 +86,7 @@ export default function Home() {
 
         <button
           onClick={() => setShowModal(true)}
-          className="rounded-lg bg-[#f0f0f0] px-10 py-3.5 text-sm font-semibold text-[#0a0a0a] transition-colors hover:bg-white"
+          className="cursor-pointer rounded-lg bg-[#f0f0f0] px-10 py-3.5 text-sm font-semibold text-[#0a0a0a] transition-all duration-150 hover:bg-[#e5e5e5] active:scale-[0.98]"
         >
           Play
         </button>

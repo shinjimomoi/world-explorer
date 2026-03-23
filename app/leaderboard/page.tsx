@@ -50,10 +50,10 @@ function LeaderboardContent() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`shrink-0 px-3 py-2 text-xs font-medium transition-colors ${
+              className={`shrink-0 cursor-pointer px-3 py-2 text-xs font-medium transition-all duration-150 ${
                 tab === t
                   ? "border-b-2 border-accent text-foreground"
-                  : "text-foreground-muted hover:text-foreground"
+                  : "text-foreground-muted hover:text-[#aaaaaa]"
               }`}
             >
               {t === "All" ? "All" : t}
@@ -87,7 +87,7 @@ function LeaderboardContent() {
               </p>
               <a
                 href={tab === "All" ? "/game" : `/game?category=${tab}`}
-                className="mt-4 inline-block rounded-lg bg-[#f0f0f0] px-6 py-2.5 text-sm font-semibold text-[#0a0a0a] transition-colors hover:bg-white"
+                className="mt-4 inline-block rounded-lg bg-[#f0f0f0] px-6 py-2.5 text-sm font-semibold text-[#0a0a0a] transition-all duration-150 hover:bg-[#e5e5e5] active:scale-[0.98]"
               >
                 Play Now
               </a>

@@ -74,7 +74,7 @@ export default function DifficultyModal({
           <div className="flex flex-col gap-3">
             <button
               onClick={() => pickDifficulty("easy")}
-              className="group rounded-xl border border-border bg-surface-elevated p-4 text-left transition-colors hover:border-accent"
+              className="group cursor-pointer rounded-xl border border-border bg-surface p-4 text-left transition-all duration-150 hover:bg-[#1a1a1a] hover:border-[#333333] active:scale-[0.98]"
             >
               <p className="font-bold text-foreground transition-colors group-hover:text-accent">
                 Easy
@@ -89,7 +89,7 @@ export default function DifficultyModal({
 
             <button
               onClick={() => pickDifficulty("hard")}
-              className="group rounded-xl border border-border bg-surface-elevated p-4 text-left transition-colors hover:border-accent"
+              className="group cursor-pointer rounded-xl border border-border bg-surface p-4 text-left transition-all duration-150 hover:bg-[#1a1a1a] hover:border-[#333333] active:scale-[0.98]"
             >
               <p className="font-bold text-foreground transition-colors group-hover:text-accent">
                 Hard
@@ -112,7 +112,7 @@ export default function DifficultyModal({
                 <button
                   key={cat.id}
                   onClick={() => pickCategory(cat.id)}
-                  className="group flex flex-col items-center gap-1.5 rounded-xl border border-border bg-surface-elevated p-3 text-center transition-colors hover:border-accent"
+                  className="group flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border border-border bg-surface p-3 text-center transition-all duration-150 hover:bg-[#1a1a1a] hover:border-[#333333] active:scale-[0.98]"
                 >
                   <Icon className="h-6 w-6 text-foreground-muted transition-colors group-hover:text-accent" strokeWidth={1.5} />
                   <p className="text-sm font-bold text-foreground transition-colors group-hover:text-accent">
