@@ -1311,6 +1311,28 @@ export default function WorldMap({
     }).catch(() => {});
   }, [gamePhase, isSignedIn, clerkUser, rounds, bestStreak]);
 
+  // ── save guest game to localStorage for recovery on sign-in ────────────
+  useEffect(() => {
+    if (gamePhase !== "ended" || isSignedIn) return;
+    try {
+      localStorage.setItem(
+        "pending_game_session",
+        JSON.stringify({
+          score: totalScore,
+          best_streak: bestStreak,
+          category,
+          rounds: rounds.map((r) => ({
+            country: r.country.name,
+            capital: r.country.capital,
+            score: r.points,
+            correct: r.points > STREAK_THRESHOLD,
+          })),
+          played_at: new Date().toISOString(),
+        })
+      );
+    } catch {}
+  }, [gamePhase, isSignedIn, totalScore, bestStreak, category, rounds]);
+
   useEffect(() => {
     return () => setNavbarState({ active: false });
   }, [setNavbarState]);
