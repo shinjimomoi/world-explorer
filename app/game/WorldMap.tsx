@@ -30,6 +30,7 @@ const TOTAL_ROUNDS = process.env.NODE_ENV === "development" ? 3 : 3;
 const MAX_POINTS = 1000;
 const STREAK_THRESHOLD = 500;
 const RESULT_MS = 3000;
+const INTRO_MS = 3000;
 const DEFAULT_PROJECTION: { scale: number; center: [number, number] } = {
   scale: 160,
   center: [0, 10],
@@ -416,6 +417,60 @@ function QuitDialog({
           >
             Quit
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── RoundIntro ──────────────────────────────────────────────────────────────
+
+function RoundIntro({
+  round,
+  totalRounds,
+  country,
+  hint,
+  fading,
+}: {
+  round: number;
+  totalRounds: number;
+  country: Country;
+  hint?: string;
+  fading: boolean;
+}) {
+  return (
+    <div className="absolute inset-0 z-20 flex items-center justify-center">
+      <div
+        className="flex flex-col items-center text-center"
+        style={{
+          background: "rgba(17, 17, 17, 0.92)",
+          backdropFilter: "blur(20px)",
+          border: "1px solid #222222",
+          borderRadius: 16,
+          padding: "32px 48px",
+          animation: fading
+            ? "introOut 300ms ease-out forwards"
+            : "introIn 200ms ease-out both",
+        }}
+      >
+        <p
+          className="mb-3 text-[11px] font-medium uppercase text-accent"
+          style={{ letterSpacing: "0.15em" }}
+        >
+          Round {round}/{totalRounds}
+        </p>
+        <h2 className="mb-2 text-[32px] font-bold leading-tight text-white">
+          {country.name}
+        </h2>
+        <p className="mb-5 text-sm text-[#888888]">
+          Find {country.capital}
+          {hint ? ` · ${hint}` : ""}
+        </p>
+        <div className="h-1 w-48 overflow-hidden rounded-full bg-[#1a1a1a]">
+          <div
+            className="h-full rounded-full bg-accent"
+            style={{ animation: `shrink ${INTRO_MS}ms linear forwards` }}
+          />
         </div>
       </div>
     </div>
@@ -943,6 +998,8 @@ export default function WorldMap({
   const [result, setResult] = useState<GuessResult | null>(null);
   const [resultStreak, setResultStreak] = useState(0);
   const [countdown, setCountdown] = useState(3);
+  const [showIntro, setShowIntro] = useState(true);
+  const [introFading, setIntroFading] = useState(false);
   const [mapZoom, setMapZoom] = useState<ZoomState>({
     center: [0, 0],
     zoom: 1,
@@ -1014,12 +1071,14 @@ export default function WorldMap({
     const next = roundRef.current + 1;
     roundRef.current = next;
     currentCountryRef.current = drawNext();
-    acceptingRef.current = true;
+    acceptingRef.current = false;
 
     setTimerSecondsLeft(roundSeconds);
     setResult(null);
     setCurrentCountry(currentCountryRef.current!);
     setRound(next);
+    setShowIntro(true);
+    setIntroFading(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── reset / play again ────────────────────────────────────────────────────
@@ -1029,7 +1088,7 @@ export default function WorldMap({
     streakRef.current = 0;
     bestStreakRef.current = 0;
     currentCountryRef.current = queueRef.current.pop()!;
-    acceptingRef.current = true;
+    acceptingRef.current = false;
 
     setGamePhase("playing");
     setCurrentCountry(currentCountryRef.current);
@@ -1041,28 +1100,46 @@ export default function WorldMap({
     setRounds([]);
     setResult(null);
     setMapZoom({ center: [0, 0], zoom: 1 });
+    setShowIntro(true);
+    setIntroFading(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── round intro: show popup then start timer ─────────────────────────────
+  useEffect(() => {
+    if (!showIntro || gamePhase !== "playing") return;
+    const fadeTimer = setTimeout(() => setIntroFading(true), INTRO_MS - 300);
+    const hideTimer = setTimeout(() => {
+      setShowIntro(false);
+      setIntroFading(false);
+      acceptingRef.current = true;
+    }, INTRO_MS);
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(hideTimer);
+    };
+  }, [showIntro, gamePhase]);
 
   // ── round timer: counts down while in guessing phase ─────────────────────
   useEffect(() => {
-    if (result !== null || gamePhase !== "playing") return;
+    if (showIntro || result !== null || gamePhase !== "playing") return;
     const iv = setInterval(
       () => setTimerSecondsLeft((s) => Math.max(0, s - 1)),
       1000
     );
     return () => clearInterval(iv);
-  }, [result, round, gamePhase]);
+  }, [showIntro, result, round, gamePhase]);
 
   // ── timeout: fires when timer hits 0 in guessing phase ───────────────────
   useEffect(() => {
     if (timerSecondsLeft > 0) return;
+    if (showIntro) return;
     if (!acceptingRef.current) return;
     if (result !== null) return;
     if (gamePhase !== "playing") return;
 
     acceptingRef.current = false;
     submitResult(null);
-  }, [timerSecondsLeft, result, gamePhase, submitResult]);
+  }, [timerSecondsLeft, showIntro, result, gamePhase, submitResult]);
 
   // ── auto-advance after showing result ────────────────────────────────────
   useEffect(() => {
@@ -1079,11 +1156,12 @@ export default function WorldMap({
   // ── stable click handler ──────────────────────────────────────────────────
   const handleClick = useCallback(
     (info: ClickInfo) => {
+      if (showIntro) return;
       if (!acceptingRef.current) return;
       acceptingRef.current = false;
       submitResult(info);
     },
-    [submitResult]
+    [showIntro, submitResult]
   );
 
   // ── quit handlers ─────────────────────────────────────────────────────────
@@ -1096,7 +1174,7 @@ export default function WorldMap({
   useEffect(() => {
     if (gamePhase !== "playing") return;
     const timerPct =
-      result !== null ? 0 : (timerSecondsLeft / roundSeconds) * 100;
+      showIntro || result !== null ? 0 : (timerSecondsLeft / roundSeconds) * 100;
     const timerColor =
       timerSecondsLeft > roundSeconds * 0.5
         ? "#4ade80"
@@ -1125,6 +1203,7 @@ export default function WorldMap({
     totalScore,
     streak,
     timerSecondsLeft,
+    showIntro,
     result,
     roundSeconds,
     setNavbarState,
@@ -1173,6 +1252,17 @@ export default function WorldMap({
           onZoomChange={setMapZoom}
         />
       </div>
+
+      {/* Round intro overlay */}
+      {showIntro && (
+        <RoundIntro
+          round={round}
+          totalRounds={TOTAL_ROUNDS}
+          country={currentCountry}
+          hint={hint}
+          fading={introFading}
+        />
+      )}
 
       {/* Result popup: sibling to the map, centered in the wrapper */}
       {result && (
