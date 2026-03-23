@@ -53,6 +53,9 @@ function RegularNavbar() {
             </SignInButton>
           </Show>
           <Show when="signed-in">
+            <Link href="/profile" className="transition-all duration-150 hover:text-foreground">
+              Profile
+            </Link>
             <UserButton />
           </Show>
         </nav>
