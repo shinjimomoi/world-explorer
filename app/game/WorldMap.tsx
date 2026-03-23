@@ -19,7 +19,7 @@ import { saveScore } from "@/lib/leaderboard";
 import { useNavbar } from "@/app/context/navbar";
 import DifficultyModal from "@/app/components/DifficultyModal";
 import ScoreCard from "@/app/components/ScoreCard";
-import { filterCountries, type Category } from "@/data/categories";
+import { filterCountries, CONTINENT_MAP, type Category } from "@/data/categories";
 import { Flame, CheckCircle, Camera, RotateCcw } from "lucide-react";
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -130,43 +130,25 @@ function ptColor(points: number): string {
 }
 
 function getZoomConfig(
-  capitalLat: number,
-  capitalLng: number
+  country: Country
 ): { scale: number; center: [number, number]; region: string } {
-  // Europe (lng −25→45, lat 35→72)
-  if (
-    capitalLng >= -25 &&
-    capitalLng <= 45 &&
-    capitalLat >= 35 &&
-    capitalLat <= 72
-  )
-    return { scale: 520, center: [15, 52], region: "Europe" };
-  // Africa (lng −20→55, lat −36→38)
-  if (
-    capitalLng >= -20 &&
-    capitalLng <= 55 &&
-    capitalLat >= -36 &&
-    capitalLat <= 38
-  )
-    return { scale: 330, center: [22, 2], region: "Africa" };
-  // Asia (remaining eastern hemisphere above −10 lat)
-  if (
-    capitalLng >= 25 &&
-    capitalLng <= 180 &&
-    capitalLat >= -10 &&
-    capitalLat <= 75
-  )
-    return { scale: 270, center: [90, 35], region: "Asia" };
-  // North America (lng −170→−50, lat > 7)
+  const { capitalLat, capitalLng, code } = country;
+  const region = CONTINENT_MAP[code] ?? "";
+
+  // Zoom/center by coordinate region (for map framing only)
+  if (capitalLng >= -25 && capitalLng <= 45 && capitalLat >= 35 && capitalLat <= 72)
+    return { scale: 520, center: [15, 52], region };
+  if (capitalLng >= -20 && capitalLng <= 55 && capitalLat >= -36 && capitalLat <= 38)
+    return { scale: 330, center: [22, 2], region };
+  if (capitalLng >= 25 && capitalLng <= 180 && capitalLat >= -10 && capitalLat <= 75)
+    return { scale: 270, center: [90, 35], region };
   if (capitalLng >= -170 && capitalLng <= -50 && capitalLat >= 7)
-    return { scale: 300, center: [-95, 45], region: "North America" };
-  // South America
+    return { scale: 300, center: [-95, 45], region };
   if (capitalLng >= -85 && capitalLng <= -32 && capitalLat <= 15)
-    return { scale: 330, center: [-58, -15], region: "South America" };
-  // Oceania
+    return { scale: 330, center: [-58, -15], region };
   if (capitalLng >= 110 && capitalLat <= 5)
-    return { scale: 390, center: [145, -25], region: "Oceania" };
-  return { scale: 160, center: [0, 10], region: "" };
+    return { scale: 390, center: [145, -25], region };
+  return { scale: 160, center: [0, 10], region };
 }
 
 // ─── OceanClickLayer ──────────────────────────────────────────────────────────
@@ -969,10 +951,7 @@ export default function WorldMap({
   // ── projection config (memo'd so MapCanvas doesn't re-render on timer ticks)
   const { projectionConfig, hint } = useMemo(() => {
     if (difficulty === "easy" && result === null) {
-      const zoom = getZoomConfig(
-        currentCountry.capitalLat,
-        currentCountry.capitalLng
-      );
+      const zoom = getZoomConfig(currentCountry);
       return {
         projectionConfig: { scale: zoom.scale, center: zoom.center },
         hint: zoom.region || undefined,

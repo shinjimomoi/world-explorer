@@ -35,7 +35,7 @@ export const CATEGORY_META: {
 
 // ─── continent lookup by ISO alpha-3 code ────────────────────────────────────
 
-const CONTINENT_MAP: Record<string, string> = {
+export const CONTINENT_MAP: Record<string, string> = {
   // Africa
   DZA: "Africa", AGO: "Africa", BEN: "Africa", BWA: "Africa", BFA: "Africa",
   BDI: "Africa", CPV: "Africa", CMR: "Africa", CAF: "Africa", TCD: "Africa",
