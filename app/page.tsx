@@ -6,6 +6,7 @@ import DifficultyModal from "./components/DifficultyModal";
 import { useRouter } from "next/navigation";
 import type { Difficulty } from "./game/WorldMap";
 import type { Category } from "@/data/categories";
+import { useUser, SignInButton } from "@clerk/nextjs";
 
 const GEO_URL =
   "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
@@ -19,6 +20,7 @@ const TICKER_CITIES = [
 
 export default function Home() {
   const router = useRouter();
+  const { isSignedIn } = useUser();
   const [showModal, setShowModal] = useState(false);
 
   function handleSelect(difficulty: Difficulty, category: Category) {
@@ -98,6 +100,17 @@ export default function Home() {
           <span className="text-[#333333]">·</span>
           <span>2 difficulty levels</span>
         </div>
+
+        {!isSignedIn && (
+          <p className="text-[13px] text-[#666666]">
+            Sign in to unlock mastery tracking and personal stats{" "}
+            <SignInButton mode="modal">
+              <button className="cursor-pointer font-semibold text-accent transition-all duration-150 hover:text-accent-hover">
+                Sign in
+              </button>
+            </SignInButton>
+          </p>
+        )}
       </div>
 
       {/* Bottom ticker */}

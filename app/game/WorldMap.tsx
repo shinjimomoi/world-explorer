@@ -21,7 +21,7 @@ import DifficultyModal from "@/app/components/DifficultyModal";
 import ScoreCard from "@/app/components/ScoreCard";
 import { filterCountries, CONTINENT_MAP, type Category } from "@/data/categories";
 import { Flame, CheckCircle, Camera, RotateCcw } from "lucide-react";
-import { useUser } from "@clerk/nextjs";
+import { useUser, SignInButton } from "@clerk/nextjs";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -630,6 +630,7 @@ function EndScreen({
   onPlayAgain,
   userId,
   userName,
+  isGuest,
 }: {
   totalScore: number;
   bestStreak: number;
@@ -639,6 +640,7 @@ function EndScreen({
   onPlayAgain: (difficulty: Difficulty, category: Category) => void;
   userId?: string;
   userName?: string;
+  isGuest: boolean;
 }) {
   const [showDifficultyModal, setShowDifficultyModal] = useState(false);
   const [name, setName] = useState("");
@@ -843,6 +845,22 @@ function EndScreen({
             </>
           )}
         </div>
+
+        {/* Sign-in nudge for guests */}
+        {isGuest && (
+          <div className="mb-4 rounded-xl border border-[#222222] bg-[#111111] p-4 sm:mb-6">
+            <p className="text-[13px] text-[#666666]">
+              {bestStreak >= 3
+                ? `You finished with a ${bestStreak} streak! Sign in to save your progress and track your best streaks.`
+                : "Sign in with Google to track your progress, unlock mastery mode and save scores automatically."}
+            </p>
+            <SignInButton mode="modal">
+              <button className="mt-2 cursor-pointer text-[13px] font-semibold text-accent transition-all duration-150 hover:text-accent-hover">
+                Sign in with Google
+              </button>
+            </SignInButton>
+          </div>
+        )}
 
         {/* Round breakdown */}
         <div className="mb-4 overflow-hidden rounded-xl border border-border bg-surface sm:mb-6">
@@ -1309,6 +1327,7 @@ export default function WorldMap({
         rounds={rounds}
         userId={isSignedIn && clerkUser ? clerkUser.id : undefined}
         userName={isSignedIn && clerkUser ? (clerkUser.fullName ?? clerkUser.username ?? "") : undefined}
+        isGuest={!isSignedIn}
         onPlayAgain={(d, c) => {
           if (d === difficulty && c === category) resetGame();
           else router.push(`/game?difficulty=${d}&category=${c}`);
