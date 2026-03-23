@@ -21,6 +21,7 @@ import DifficultyModal from "@/app/components/DifficultyModal";
 import ScoreCard from "@/app/components/ScoreCard";
 import { filterCountries, CONTINENT_MAP, type Category } from "@/data/categories";
 import { Flame, CheckCircle, Camera, RotateCcw } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -627,6 +628,8 @@ function EndScreen({
   category,
   rounds,
   onPlayAgain,
+  userId,
+  userName,
 }: {
   totalScore: number;
   bestStreak: number;
@@ -634,12 +637,29 @@ function EndScreen({
   category: Category;
   rounds: RoundRecord[];
   onPlayAgain: (difficulty: Difficulty, category: Category) => void;
+  userId?: string;
+  userName?: string;
 }) {
   const [showDifficultyModal, setShowDifficultyModal] = useState(false);
   const [name, setName] = useState("");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const hasSavedRef = useRef(false);
+
+  // Auto-save for signed-in users
+  useEffect(() => {
+    if (!userId || !userName || hasSavedRef.current) return;
+    hasSavedRef.current = true;
+    setSaving(true);
+    saveScore(userName, totalScore, bestStreak, category, userId)
+      .then(() => setSaved(true))
+      .catch(() => {
+        setSaveError("Failed to save.");
+        hasSavedRef.current = false;
+      })
+      .finally(() => setSaving(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [instagramStatus, setInstagramStatus] = useState<
     "idle" | "generating" | "saved"
   >("idle");
@@ -707,7 +727,7 @@ function EndScreen({
     setSaving(true);
     setSaveError(null);
     try {
-      await saveScore(trimmed, totalScore, bestStreak, category);
+      await saveScore(trimmed, totalScore, bestStreak, category, userId);
       setSaved(true);
     } catch {
       setSaveError("Failed to save. Please try again.");
@@ -783,6 +803,15 @@ function EndScreen({
                   View leaderboard →
                 </a>
               </div>
+            </div>
+          ) : saving && userId ? (
+            <div className="flex items-center gap-3">
+              <div
+                className="h-4 w-4 shrink-0 rounded-full border-2 border-[#333333] border-t-accent"
+                style={{ animation: "spin 0.6s linear infinite" }}
+              />
+              <p className="text-sm text-foreground-muted">Saving score…</p>
+              <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
             </div>
           ) : (
             <>
@@ -963,7 +992,9 @@ export default function WorldMap({
   const roundSeconds = difficulty === "hard" ? 15 : 30;
   const router = useRouter();
   const { setState: setNavbarState } = useNavbar();
+  const { isSignedIn, user: clerkUser } = useUser();
   const [showQuitDialog, setShowQuitDialog] = useState(false);
+  const masteryBonusRef = useRef(0); // tracks XP from newly mastered countries
 
   // ── stable refs (mutations don't trigger re-renders) ─────────────────────
   const queueRef = useRef<Country[]>([]);
@@ -1060,6 +1091,26 @@ export default function WorldMap({
       timedOut,
     });
   }, []); // stable: only refs + functional setters
+
+  // ── sync mastery to Supabase after each round (signed-in only) ──────────
+  useEffect(() => {
+    if (!result || !isSignedIn || !clerkUser) return;
+    const correct = result.points > STREAK_THRESHOLD;
+    fetch("/api/mastery", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: clerkUser.id,
+        country: result.country.name,
+        correct,
+      }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.newlyMastered) masteryBonusRef.current += 50;
+      })
+      .catch(() => {});
+  }, [result, isSignedIn, clerkUser]);
 
   // ── advance to next round (or end game) ───────────────────────────────────
   // roundSeconds is stable for the component lifetime (difficulty prop is fixed per game)
@@ -1215,6 +1266,33 @@ export default function WorldMap({
     if (gamePhase === "ended") setNavbarState({ active: false });
   }, [gamePhase, setNavbarState]);
 
+  // ── sync game completion to Supabase (signed-in only) ──────────────────
+  useEffect(() => {
+    if (gamePhase !== "ended" || !isSignedIn || !clerkUser) return;
+    const correctRounds = rounds.filter((r) => r.points > STREAK_THRESHOLD).length;
+    let xpEarned = 0;
+    for (const r of rounds) {
+      if (r.points > 800) xpEarned += 40;
+      else if (r.points > STREAK_THRESHOLD) xpEarned += 20;
+    }
+    // Streak bonus: +10 per round that was part of a 3+ streak
+    // Simplified: if best streak >= 3, award 10 * (bestStreak - 2)
+    if (bestStreak >= 3) xpEarned += (bestStreak - 2) * 10;
+    // Mastery bonuses accumulated during rounds
+    xpEarned += masteryBonusRef.current;
+
+    fetch("/api/game-complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: clerkUser.id,
+        roundsPlayed: rounds.length,
+        correctRounds,
+        xpEarned,
+      }),
+    }).catch(() => {});
+  }, [gamePhase, isSignedIn, clerkUser, rounds, bestStreak]);
+
   useEffect(() => {
     return () => setNavbarState({ active: false });
   }, [setNavbarState]);
@@ -1229,6 +1307,8 @@ export default function WorldMap({
         difficulty={difficulty}
         category={category}
         rounds={rounds}
+        userId={isSignedIn && clerkUser ? clerkUser.id : undefined}
+        userName={isSignedIn && clerkUser ? (clerkUser.fullName ?? clerkUser.username ?? "") : undefined}
         onPlayAgain={(d, c) => {
           if (d === difficulty && c === category) resetGame();
           else router.push(`/game?difficulty=${d}&category=${c}`);

@@ -47,7 +47,7 @@ function formatDate(dateStr: string): string {
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface MasteryRow {
-  country_code: string;
+  country: string;
   correct_count: number;
   attempts: number;
 }
@@ -61,11 +61,13 @@ interface ScoreRow {
 }
 
 interface ProfileData {
-  user: { id: string; name: string; email: string; avatar_url: string; xp: number } | null;
+  user: { id: string; name: string; email: string; avatar_url: string; xp: number; total_games: number; total_guesses: number; total_correct: number } | null;
   mastery: MasteryRow[];
   recentScores: ScoreRow[];
   bestStreak: number;
   totalGames: number;
+  accuracy: number;
+  masteredCount: number;
 }
 
 // ─── Regions for mastery breakdown ───────────────────────────────────────────
@@ -84,10 +86,14 @@ export default function ProfilePage() {
       router.replace("/?message=signin");
       return;
     }
-    fetch(`/api/profile?userId=${user.id}`)
+    console.log("[Profile] Fetching for userId:", user.id);
+    fetch(`/api/profile?userId=${user.id}&t=${Date.now()}`)
       .then((r) => r.json())
-      .then(setData)
-      .catch(() => {})
+      .then((d) => {
+        console.log("[Profile] Data received:", d);
+        setData(d);
+      })
+      .catch((err) => console.error("[Profile] Fetch error:", err))
       .finally(() => setLoading(false));
   }, [isLoaded, isSignedIn, user, router]);
 
@@ -107,13 +113,12 @@ export default function ProfilePage() {
   const { level, current, needed } = levelFromXp(xp);
   const title = levelTitle(level);
 
-  const totalCorrect = data.mastery.reduce((s, m) => s + m.correct_count, 0);
-  const totalAttempts = data.mastery.reduce((s, m) => s + m.attempts, 0);
-  const accuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
-  const mastered = data.mastery.filter((m) => m.correct_count >= 3).length;
+  const accuracy = data.accuracy;
+  const mastered = data.masteredCount;
 
   // Build mastery lookup
-  const masteryMap = new Map(data.mastery.map((m) => [m.country_code, m]));
+  // Map country name → mastery row
+  const masteryMap = new Map(data.mastery.map((m) => [m.country, m]));
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
@@ -183,9 +188,9 @@ export default function ProfilePage() {
           <div className="flex flex-col gap-3">
             {REGIONS.map((region) => {
               const total = filterCountries(region).length;
-              const regionMastered = data.mastery.filter(
-                (m) =>
-                  m.correct_count >= 3 && CONTINENT_MAP[m.country_code] === region
+              const regionCountries = filterCountries(region);
+              const regionMastered = regionCountries.filter(
+                (c) => (masteryMap.get(c.name)?.correct_count ?? 0) >= 3
               ).length;
               const pct = total > 0 ? (regionMastered / total) * 100 : 0;
               const barColor =
@@ -219,31 +224,35 @@ export default function ProfilePage() {
             Countries
           </p>
           <div className="flex flex-wrap gap-1.5">
-            {countries.map((c) => {
-              const m = masteryMap.get(c.code);
-              let bg = "bg-surface-elevated";
-              let text = "text-foreground-muted";
-              if (m) {
-                if (m.correct_count >= 3) {
-                  bg = "bg-accent/15";
-                  text = "text-accent";
-                } else if (m.correct_count >= 1) {
-                  bg = "bg-[#EF9F27]/15";
-                  text = "text-[#EF9F27]";
-                } else {
-                  bg = "bg-[#333333]/50";
-                  text = "text-[#888888]";
-                }
-              }
-              return (
-                <span
-                  key={c.code}
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${bg} ${text}`}
-                >
-                  {c.name}
-                </span>
-              );
-            })}
+            {data.mastery.length === 0 ? (
+              <p className="text-xs text-foreground-muted">Play a game to start tracking countries!</p>
+            ) : (
+              countries
+                .filter((c) => masteryMap.has(c.name))
+                .map((c) => {
+                  const m = masteryMap.get(c.name)!;
+                  let bg: string;
+                  let text: string;
+                  if (m.correct_count >= 3) {
+                    bg = "bg-accent/15";
+                    text = "text-accent";
+                  } else if (m.correct_count >= 1) {
+                    bg = "bg-[#EF9F27]/15";
+                    text = "text-[#EF9F27]";
+                  } else {
+                    bg = "bg-[#333333]/50";
+                    text = "text-[#888888]";
+                  }
+                  return (
+                    <span
+                      key={c.code}
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${bg} ${text}`}
+                    >
+                      {c.name}
+                    </span>
+                  );
+                })
+            )}
           </div>
           <div className="mt-3 flex gap-4 text-[10px] text-foreground-muted">
             <span className="flex items-center gap-1">

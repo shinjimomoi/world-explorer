@@ -9,27 +9,35 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Missing userId" }, { status: 400 });
   }
 
+  console.log("[profile] Fetching data for userId:", userId);
+
   try {
     // Fetch user row
-    const { data: user } = await supabaseAdmin
+    const { data: user, error: userErr } = await supabaseAdmin
       .from("users")
       .select("*")
       .eq("id", userId)
       .single();
 
+    console.log("[profile] User:", user, "Error:", userErr);
+
     // Fetch mastery rows
-    const { data: mastery } = await supabaseAdmin
+    const { data: mastery, error: masteryErr } = await supabaseAdmin
       .from("mastery")
-      .select("*")
+      .select("country, attempts, correct_count")
       .eq("user_id", userId);
 
+    console.log("[profile] Mastery rows:", mastery?.length, "Error:", masteryErr);
+
     // Fetch recent scores
-    const { data: scores } = await supabaseAdmin
+    const { data: scores, error: scoresErr } = await supabaseAdmin
       .from("scores")
-      .select("*")
+      .select("score, best_streak, category, difficulty, created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(5);
+
+    console.log("[profile] Scores:", scores?.length, "Error:", scoresErr);
 
     // Best streak from scores
     const { data: bestStreakRow } = await supabaseAdmin
@@ -40,19 +48,32 @@ export async function GET(req: Request) {
       .limit(1)
       .single();
 
-    // Total games count
-    const { count: totalGames } = await supabaseAdmin
-      .from("scores")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId);
+    const bestStreak = bestStreakRow?.best_streak ?? 0;
+    console.log("[profile] Best streak:", bestStreak);
 
-    return NextResponse.json({
+    // Mastered count
+    const masteredCount = (mastery ?? []).filter((m) => m.correct_count >= 3).length;
+
+    const result = {
       user,
       mastery: mastery ?? [],
       recentScores: scores ?? [],
-      bestStreak: bestStreakRow?.best_streak ?? 0,
-      totalGames: totalGames ?? 0,
+      bestStreak,
+      totalGames: user?.total_games ?? 0,
+      accuracy: user?.total_guesses > 0
+        ? Math.round(((user?.total_correct ?? 0) / user.total_guesses) * 100)
+        : 0,
+      masteredCount,
+    };
+
+    console.log("[profile] Returning:", {
+      totalGames: result.totalGames,
+      accuracy: result.accuracy,
+      masteredCount: result.masteredCount,
+      bestStreak: result.bestStreak,
     });
+
+    return NextResponse.json(result);
   } catch (err) {
     console.error("[profile] Error:", err);
     return NextResponse.json({ error: "Failed to load profile" }, { status: 500 });

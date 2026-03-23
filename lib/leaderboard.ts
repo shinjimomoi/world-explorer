@@ -13,10 +13,13 @@ export async function saveScore(
   score: number,
   bestStreak: number,
   category: string = "All World",
+  userId?: string,
 ): Promise<void> {
+  const row: Record<string, unknown> = { name, score, best_streak: bestStreak, category };
+  if (userId) row.user_id = userId;
   const { error } = await supabase
     .from("scores")
-    .insert({ name, score, best_streak: bestStreak, category });
+    .insert(row);
   if (error) throw error;
 }
 
