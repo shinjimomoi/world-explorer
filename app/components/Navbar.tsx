@@ -8,6 +8,7 @@ import DifficultyModal from "./DifficultyModal";
 import type { Difficulty } from "@/app/game/WorldMap";
 import type { Category } from "@/data/categories";
 import { X, Flame } from "lucide-react";
+import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 
 export default function Navbar() {
   const { state } = useNavbar();
@@ -34,7 +35,7 @@ function RegularNavbar() {
         >
           World Explorer
         </Link>
-        <nav className="flex gap-6 text-sm text-foreground-muted">
+        <nav className="flex items-center gap-6 text-sm text-foreground-muted">
           <button
             onClick={() => setShowModal(true)}
             className="cursor-pointer transition-all duration-150 hover:text-foreground"
@@ -44,6 +45,16 @@ function RegularNavbar() {
           <Link href="/leaderboard" className="transition-all duration-150 hover:text-foreground">
             Leaderboard
           </Link>
+          <Show when="signed-out">
+            <SignInButton>
+              <button className="cursor-pointer transition-all duration-150 hover:text-foreground">
+                Sign in
+              </button>
+            </SignInButton>
+          </Show>
+          <Show when="signed-in">
+            <UserButton />
+          </Show>
         </nav>
       </header>
       {showModal && (

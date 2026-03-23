@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { NavbarProvider } from "./context/navbar";
 import Navbar from "./components/Navbar";
@@ -65,10 +66,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="h-dvh overflow-hidden flex flex-col bg-background text-foreground">
-        <NavbarProvider>
-          <Navbar />
-<main className="flex flex-col flex-1 min-h-0 overflow-hidden">{children}</main>
-        </NavbarProvider>
+        <ClerkProvider>
+          <NavbarProvider>
+            <Navbar />
+            <main className="flex flex-col flex-1 min-h-0 overflow-hidden">{children}</main>
+          </NavbarProvider>
+        </ClerkProvider>
       </body>
     </html>
   );
