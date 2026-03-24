@@ -21,30 +21,20 @@ export function useMapZoom({
   currentCountry,
   result,
 }: UseMapZoomParams) {
-  // ── currentTier ───────────────────────────────────────────────────────────
   const currentTier = useMemo(
     () => (isSurvival ? survivalTier(round) : null),
     [isSurvival, round]
   );
 
-  // ── projectionConfig + hint ───────────────────────────────────────────────
-  const { projectionConfig, hint } = useMemo(() => {
-    if (isSurvival && currentTier?.showHint && result === null) {
-      const zoom = getZoomConfig(currentCountry);
-      return {
-        projectionConfig: { scale: zoom.scale, center: zoom.center },
-        hint: zoom.region || undefined,
-      };
+  // Always use the default world view — never auto-zoom to a continent.
+  // Hint (region name) is still shown for easy mode / survival tier 1.
+  const hint = useMemo(() => {
+    if (result !== null) return undefined;
+    if (difficulty === "easy" || (isSurvival && currentTier?.showHint)) {
+      return getZoomConfig(currentCountry).region || undefined;
     }
-    if (difficulty === "easy" && result === null) {
-      const zoom = getZoomConfig(currentCountry);
-      return {
-        projectionConfig: { scale: zoom.scale, center: zoom.center },
-        hint: zoom.region || undefined,
-      };
-    }
-    return { projectionConfig: DEFAULT_PROJECTION, hint: undefined };
+    return undefined;
   }, [difficulty, isSurvival, currentTier?.showHint, result, currentCountry]);
 
-  return { projectionConfig, hint, currentTier };
+  return { projectionConfig: DEFAULT_PROJECTION, hint, currentTier };
 }
