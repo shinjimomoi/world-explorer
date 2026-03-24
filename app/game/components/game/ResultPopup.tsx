@@ -3,11 +3,11 @@ import type { GuessResult } from "../../types";
 import { TOTAL_ROUNDS, RESULT_MS } from "../../types";
 import { ptColor, streakMultiplier } from "../../utils";
 
-const MAX_DISTANCE = 20000;
+const MAX_DISTANCE = 5000;
 
 function distanceColor(km: number): string {
-  if (km < 500) return "#4ade80";
-  if (km < 2000) return "#fbbf24";
+  if (km <= 500) return "#4ade80";
+  if (km <= 1000) return "#EF9F27";
   return "#f87171";
 }
 
@@ -29,18 +29,17 @@ export default function ResultPopup({
   const isLastRound = !isSurvival && round >= TOTAL_ROUNDS;
   const color = ptColor(result.points);
   const { label: streakLabel } = streakMultiplier(newStreak);
+  const distKm = result.distanceKm !== null ? Math.round(result.distanceKm) : null;
 
   const headline = result.timedOut
     ? "Time's up"
-    : result.basePoints >= 900
-    ? "Outstanding"
-    : result.basePoints >= 700
-    ? "Great shot"
-    : result.basePoints >= 500
-    ? "Not bad"
+    : distKm !== null && distKm <= 200
+    ? "Outstanding!"
+    : distKm !== null && distKm <= 500
+    ? "Great shot!"
+    : distKm !== null && distKm <= 1000
+    ? "Not bad!"
     : "Keep exploring";
-
-  const distKm = result.distanceKm !== null ? Math.round(result.distanceKm) : null;
   const distPct = distKm !== null ? Math.min(100, (distKm / MAX_DISTANCE) * 100) : 0;
   const dColor = distKm !== null ? distanceColor(distKm) : "#666";
 
