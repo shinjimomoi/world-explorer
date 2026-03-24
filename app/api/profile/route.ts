@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     // Fetch mastery rows
     const { data: mastery, error: masteryErr } = await supabaseAdmin
       .from("mastery")
-      .select("country, attempts, correct_count")
+      .select("country, attempts, correct_count, last_played")
       .eq("user_id", userId);
 
     console.log("[profile] Mastery rows:", mastery?.length, "Error:", masteryErr);

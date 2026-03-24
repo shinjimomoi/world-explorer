@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { countries } from "@/data/countries";
-import { CONTINENT_MAP, filterCountries } from "@/data/categories";
-import { Flame, Shield, Swords } from "lucide-react";
+import {
+  ComposableMap,
+  Geographies,
+  Geography,
+  ZoomableGroup,
+} from "react-simple-maps";
+import { countries, countriesByNumericCode } from "@/data/countries";
+import { filterCountries } from "@/data/categories";
+import { Flame, Shield, Swords, Plus, Minus, RotateCcw } from "lucide-react";
+
+const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
 // ─── XP / Level helpers ──────────────────────────────────────────────────────
 
@@ -32,8 +40,6 @@ function levelTitle(level: number): string {
   return "Novice";
 }
 
-// ─── Date formatting ─────────────────────────────────────────────────────────
-
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
   const now = new Date();
@@ -50,6 +56,7 @@ interface MasteryRow {
   country: string;
   correct_count: number;
   attempts: number;
+  last_played?: string;
 }
 
 interface ScoreRow {
@@ -71,15 +78,49 @@ interface ProfileData {
   survival: { games: number; bestScore: number; bestStreak: number };
 }
 
-// ─── Regions for mastery breakdown ───────────────────────────────────────────
+// ─── Mastery color helpers ───────────────────────────────────────────────────
+
+function masteryFill(m: MasteryRow | undefined): string {
+  if (!m) return "#1a1a1a";
+  if (m.correct_count >= 3) return "#4ade80";
+  if (m.correct_count >= 1) return "#854F0B";
+  return "#2a2a2a";
+}
+
+function masteryHover(m: MasteryRow | undefined): string {
+  if (!m) return "#222222";
+  if (m.correct_count >= 3) return "#6ee7a0";
+  if (m.correct_count >= 1) return "#a0630e";
+  return "#333333";
+}
+
+function masteryStatus(m: MasteryRow | undefined): string {
+  if (!m) return "Not played";
+  if (m.correct_count >= 3) return "Mastered";
+  if (m.correct_count >= 1) return "Learning";
+  return "Seen";
+}
+
+// ─── Regions ─────────────────────────────────────────────────────────────────
 
 const REGIONS = ["Africa", "Americas", "Asia", "Europe", "Oceania"] as const;
+
+const REGION_ZOOM: Record<string, { center: [number, number]; zoom: number }> = {
+  Africa: { center: [22, 2], zoom: 2.2 },
+  Americas: { center: [-80, 10], zoom: 1.5 },
+  Asia: { center: [90, 35], zoom: 1.8 },
+  Europe: { center: [15, 52], zoom: 3.5 },
+  Oceania: { center: [145, -25], zoom: 2.5 },
+};
 
 export default function ProfilePage() {
   const { isSignedIn, isLoaded, user } = useUser();
   const router = useRouter();
   const [data, setData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; m: MasteryRow | undefined; name: string; capital: string } | null>(null);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([0, 10]);
+  const [mapZoom, setMapZoom] = useState(1);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -87,16 +128,20 @@ export default function ProfilePage() {
       router.replace("/?message=signin");
       return;
     }
-    console.log("[Profile] Fetching for userId:", user.id);
     fetch(`/api/profile?userId=${user.id}&t=${Date.now()}`)
       .then((r) => r.json())
-      .then((d) => {
-        console.log("[Profile] Data received:", d);
-        setData(d);
-      })
-      .catch((err) => console.error("[Profile] Fetch error:", err))
+      .then(setData)
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [isLoaded, isSignedIn, user, router]);
+
+  const handleMoveEnd = useCallback(
+    ({ coordinates, zoom }: { coordinates: [number, number]; zoom: number }) => {
+      setMapCenter(coordinates);
+      setMapZoom(zoom);
+    },
+    []
+  );
 
   if (!isLoaded || loading || !data) {
     return (
@@ -113,13 +158,18 @@ export default function ProfilePage() {
   const xp = data.user?.xp ?? 0;
   const { level, current, needed } = levelFromXp(xp);
   const title = levelTitle(level);
-
   const accuracy = data.accuracy;
   const mastered = data.masteredCount;
 
-  // Build mastery lookup
-  // Map country name → mastery row
+  // Mastery lookup by country name
   const masteryMap = new Map(data.mastery.map((m) => [m.country, m]));
+  // Also by numeric code for map rendering
+  const nameByNumeric = new Map<number, string>();
+  countries.forEach((c) => nameByNumeric.set(c.numericCode, c.name));
+
+  const playedCount = data.mastery.length;
+  const seenCount = data.mastery.filter((m) => m.correct_count === 0).length;
+  const learningCount = data.mastery.filter((m) => m.correct_count >= 1 && m.correct_count < 3).length;
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
@@ -160,72 +210,191 @@ export default function ProfilePage() {
             { label: "Mastered", value: mastered },
             { label: "Best Streak", value: data.bestStreak, icon: true },
           ].map((s) => (
-            <div
-              key={s.label}
-              className="rounded-xl border border-border bg-surface p-3 text-center"
-            >
-              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
-                {s.label}
-              </p>
+            <div key={s.label} className="rounded-xl border border-border bg-surface p-3 text-center">
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">{s.label}</p>
               <p className="mt-1 font-mono text-xl font-bold text-foreground">
                 {s.icon ? (
                   <span className="inline-flex items-center gap-1">
-                    <Flame className="h-4 w-4 text-accent" strokeWidth={1.5} />
-                    {s.value}
+                    <Flame className="h-4 w-4 text-accent" strokeWidth={1.5} />{s.value}
                   </span>
-                ) : (
-                  s.value
-                )}
+                ) : s.value}
               </p>
             </div>
           ))}
         </div>
 
-        {/* ── Mastery by Region ────────────────────────────────────── */}
-        <div className="mb-6 rounded-xl border border-border bg-surface p-4">
-          <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
-            Mastery by Region
-          </p>
-          <div className="flex flex-col gap-3">
-            {REGIONS.map((region) => {
-              const total = filterCountries(region).length;
-              const regionCountries = filterCountries(region);
-              const regionMastered = regionCountries.filter(
-                (c) => (masteryMap.get(c.name)?.correct_count ?? 0) >= 3
-              ).length;
-              const pct = total > 0 ? (regionMastered / total) * 100 : 0;
-              const barColor =
-                pct > 50 ? "#4ade80" : pct >= 10 ? "#EF9F27" : "#333333";
-              return (
-                <div key={region}>
-                  <div className="mb-1 flex items-center justify-between">
-                    <span className="text-sm text-foreground">{region}</span>
-                    <span className="font-mono text-xs text-foreground-muted">
-                      {regionMastered}/{total}
-                    </span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-[#1a1a1a]">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{
-                        width: `${Math.max(pct, 1)}%`,
-                        backgroundColor: barColor,
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+        {/* ── Mastery Heatmap ──────────────────────────────────────── */}
+        <div className="relative mb-4 overflow-hidden rounded-xl border border-border bg-[#0a0a0a]">
+          <div style={{ height: 400 }}>
+            <ComposableMap
+              projection="geoEqualEarth"
+              projectionConfig={{ scale: 160, center: [0, 10] }}
+              width={960}
+              height={500}
+              style={{ width: "100%", height: "100%", display: "block" }}
+            >
+              <ZoomableGroup
+                center={mapCenter}
+                zoom={mapZoom}
+                minZoom={1}
+                maxZoom={8}
+                onMoveEnd={handleMoveEnd}
+              >
+                <Geographies geography={GEO_URL}>
+                  {({ geographies }: any) =>
+                    geographies.map((geo: any) => {
+                      const countryName = nameByNumeric.get(Number(geo.id));
+                      const m = countryName ? masteryMap.get(countryName) : undefined;
+                      const country = countryName ? countriesByNumericCode.get(Number(geo.id)) : undefined;
+                      return (
+                        <Geography
+                          key={geo.rsmKey}
+                          geography={geo}
+                          onMouseEnter={(e) => {
+                            if (!countryName || !country) return;
+                            setTooltip({
+                              x: e.clientX,
+                              y: e.clientY,
+                              m,
+                              name: countryName,
+                              capital: country.capital,
+                            });
+                          }}
+                          onMouseMove={(e) => {
+                            if (tooltip) {
+                              setTooltip((prev) => prev ? { ...prev, x: e.clientX, y: e.clientY } : null);
+                            }
+                          }}
+                          onMouseLeave={() => setTooltip(null)}
+                          style={{
+                            default: {
+                              fill: masteryFill(m),
+                              stroke: "#2a2a2a",
+                              strokeWidth: 0.5,
+                              outline: "none",
+                              transition: "fill 500ms ease",
+                            },
+                            hover: {
+                              fill: masteryHover(m),
+                              stroke: "#333333",
+                              strokeWidth: 0.5,
+                              outline: "none",
+                              cursor: "pointer",
+                            },
+                            pressed: {
+                              fill: masteryHover(m),
+                              stroke: "#333333",
+                              strokeWidth: 0.5,
+                              outline: "none",
+                            },
+                          }}
+                        />
+                      );
+                    })
+                  }
+                </Geographies>
+              </ZoomableGroup>
+            </ComposableMap>
           </div>
+
+          {/* Tooltip */}
+          {tooltip && (
+            <div
+              className="pointer-events-none fixed z-50"
+              style={{
+                left: Math.min(tooltip.x + 12, typeof window !== "undefined" ? window.innerWidth - 200 : 600),
+                top: Math.min(tooltip.y - 10, typeof window !== "undefined" ? window.innerHeight - 120 : 400),
+              }}
+            >
+              <div className="rounded-lg border border-[#222222] bg-[#111111] px-3 py-2">
+                <p className="text-[13px] font-semibold text-foreground">{tooltip.name}</p>
+                <p className="text-[12px] text-foreground-muted">{tooltip.capital}</p>
+                <p className="mt-1 text-[12px]" style={{ color: masteryFill(tooltip.m) === "#1a1a1a" ? "#666" : masteryFill(tooltip.m) }}>
+                  {masteryStatus(tooltip.m)}
+                </p>
+                {tooltip.m && (
+                  <>
+                    <p className="text-[11px] text-foreground-muted">
+                      {tooltip.m.correct_count}/{tooltip.m.attempts} correct
+                    </p>
+                    {tooltip.m.last_played && (
+                      <p className="text-[11px] text-foreground-muted">
+                        Last played: {formatDate(tooltip.m.last_played)}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Map controls */}
+          <div className="absolute right-3 top-3 flex flex-col gap-1">
+            <button
+              onClick={() => setMapZoom((z) => Math.min(8, z * 1.5))}
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-[#333333] bg-[#111111] text-foreground-muted transition-colors hover:bg-[#1a1a1a] hover:text-foreground"
+            >
+              <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => setMapZoom((z) => Math.max(1, z / 1.5))}
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-[#333333] bg-[#111111] text-foreground-muted transition-colors hover:bg-[#1a1a1a] hover:text-foreground"
+            >
+              <Minus className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => { setMapCenter([0, 10]); setMapZoom(1); }}
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-[#333333] bg-[#111111] text-foreground-muted transition-colors hover:bg-[#1a1a1a] hover:text-foreground"
+            >
+              <RotateCcw className="h-3 w-3" strokeWidth={1.5} />
+            </button>
+          </div>
+        </div>
+
+        {/* ── Legend + Region summary ───────────────────────────────── */}
+        <div className="mb-2 flex flex-wrap items-center gap-4 text-[11px] text-foreground-muted">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#1a1a1a] border border-[#333]" /> Not played
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#2a2a2a]" /> Seen: {seenCount}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#854F0B]" /> Learning: {learningCount}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-accent" /> Mastered: {mastered}
+          </span>
+        </div>
+
+        <div className="mb-6 flex flex-wrap gap-2">
+          {REGIONS.map((region) => {
+            const total = filterCountries(region).length;
+            const regionMastered = filterCountries(region).filter(
+              (c) => (masteryMap.get(c.name)?.correct_count ?? 0) >= 3
+            ).length;
+            return (
+              <button
+                key={region}
+                onClick={() => {
+                  const rz = REGION_ZOOM[region];
+                  if (rz) { setMapCenter(rz.center); setMapZoom(rz.zoom); }
+                }}
+                className="cursor-pointer rounded-lg border border-border bg-surface px-3 py-1.5 font-mono text-xs text-foreground-muted transition-all duration-150 hover:bg-[#1a1a1a] hover:border-[#333333] active:scale-[0.98]"
+              >
+                {region} · <span className="text-accent">{regionMastered}</span>/{total}
+              </button>
+            );
+          })}
         </div>
 
         {/* ── Countries Grid ───────────────────────────────────────── */}
         <div className="mb-6 rounded-xl border border-border bg-surface p-4">
           <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
-            Countries
+            {playedCount > 0 ? `${playedCount} countries explored` : "Countries"}
           </p>
           <div className="flex flex-wrap gap-1.5">
-            {data.mastery.length === 0 ? (
+            {playedCount === 0 ? (
               <p className="text-xs text-foreground-muted">Play a game to start tracking countries!</p>
             ) : (
               countries
@@ -255,17 +424,19 @@ export default function ProfilePage() {
                 })
             )}
           </div>
-          <div className="mt-3 flex gap-4 text-[10px] text-foreground-muted">
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-2 w-2 rounded-full bg-accent" /> Mastered (3+)
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-2 w-2 rounded-full bg-[#EF9F27]" /> Learning (1-2)
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-2 w-2 rounded-full bg-[#888888]" /> Seen
-            </span>
-          </div>
+          {playedCount > 0 && (
+            <div className="mt-3 flex gap-4 text-[10px] text-foreground-muted">
+              <span className="flex items-center gap-1">
+                <span className="inline-block h-2 w-2 rounded-full bg-accent" /> Mastered (3+)
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="inline-block h-2 w-2 rounded-full bg-[#EF9F27]" /> Learning (1-2)
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="inline-block h-2 w-2 rounded-full bg-[#888888]" /> Seen
+              </span>
+            </div>
+          )}
         </div>
 
         {/* ── Recent Games ─────────────────────────────────────────── */}
@@ -290,9 +461,7 @@ export default function ProfilePage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-foreground-muted">
-                      {formatDate(s.created_at)}
-                    </p>
+                    <p className="text-xs text-foreground-muted">{formatDate(s.created_at)}</p>
                   </div>
                   <span className="shrink-0 font-mono text-sm font-bold text-accent">
                     {s.score.toLocaleString()}
@@ -302,6 +471,7 @@ export default function ProfilePage() {
             </div>
           </div>
         )}
+
         {/* ── Survival Stats ────────────────────────────────────────── */}
         <div className="mb-6 rounded-xl border border-border bg-surface p-4">
           <div className="mb-3 flex items-center gap-2">
