@@ -1273,7 +1273,10 @@ export default function WorldMap({
   });
 
   // ── projection config (memo'd so MapCanvas doesn't re-render on timer ticks)
-  const currentTier = isSurvival ? survivalTier(round) : null;
+  const currentTier = useMemo(
+    () => (isSurvival ? survivalTier(round) : null),
+    [isSurvival, round]
+  );
   const { projectionConfig, hint } = useMemo(() => {
     if (isSurvival && currentTier?.showHint && result === null) {
       const zoom = getZoomConfig(currentCountry);
