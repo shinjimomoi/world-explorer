@@ -94,7 +94,7 @@ export function useTimer({
     if (!result || gamePhase !== "playing") return;
     // In survival, don't auto-advance if out of lives (game over handled separately)
     if (isSurvival && lives <= 0) return;
-    setCountdown(3);
+    setCountdown(5);
     const iv = setInterval(() => setCountdown((c) => c - 1), 1000);
     const to = setTimeout(advance, RESULT_MS);
     return () => {

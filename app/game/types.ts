@@ -46,7 +46,7 @@ export const GEO_URL =
 export const TOTAL_ROUNDS = process.env.NODE_ENV === "development" ? 3 : 3;
 export const MAX_POINTS = 1000;
 export const STREAK_THRESHOLD = 500;
-export const RESULT_MS = 3000;
+export const RESULT_MS = 5000;
 export const INTRO_MS = 3000;
 export const SURVIVAL_LIVES = 3;
 export const SURVIVAL_TIMER = 20;
