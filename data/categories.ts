@@ -94,6 +94,47 @@ const MICROSTATE_CODES = new Set([
   "SYC", "SGP", "SLB", "SUR", "TON", "TTO", "TUV", "VUT",
 ]);
 
+// ─── difficulty ranks for survival mode ───────────────────────────────────────
+
+// Rank 1 (Easy): well-known capitals
+const RANK1_CODES = new Set([
+  "USA", "CAN", "BRA", "ARG", "MEX", "GBR", "FRA", "DEU", "ITA", "ESP",
+  "PRT", "JPN", "CHN", "IND", "AUS", "RUS", "ZAF", "EGY", "NGA", "KOR",
+  "NLD", "SWE", "NOR", "CHE", "POL", "TUR", "SAU", "ARE", "THA", "IDN",
+  "NZL", "GRC", "AUT", "BEL", "DNK", "FIN", "IRL", "CZE", "HUN", "ROU",
+  "UKR", "CHL", "COL", "PER", "VEN", "MAR", "KEN", "ETH", "GHA", "TZA",
+]);
+
+// Rank 3 (Hard): obscure capitals, microstates, islands
+const RANK3_CODES = new Set([
+  // African nations not in rank 1
+  "DZA", "AGO", "BEN", "BWA", "BFA", "BDI", "CPV", "CMR", "CAF", "TCD",
+  "COM", "COG", "COD", "DJI", "GNQ", "ERI", "SWZ", "GAB", "GMB", "GIN",
+  "GNB", "CIV", "LSO", "LBR", "LBY", "MDG", "MWI", "MLI", "MRT", "MUS",
+  "MOZ", "NAM", "NER", "RWA", "STP", "SEN", "SYC", "SLE", "SOM", "SSD",
+  "SDN", "TGO", "TUN", "UGA", "ZMB", "ZWE",
+  // Pacific islands
+  "FJI", "KIR", "MHL", "FSM", "NRU", "PLW", "WSM", "SLB", "TON", "TUV",
+  "VUT", "PNG",
+  // Central Asia
+  "KAZ", "UZB", "TKM", "TJK", "KGZ",
+  // Caribbean microstates
+  "ATG", "BRB", "DMA", "GRD", "KNA", "LCA", "VCT",
+  // Microstates & small states
+  "AND", "SMR", "MCO", "LIE", "LUX", "MLT", "MDV", "BTN", "TLS", "BHR",
+  "BRN", "MNE", "SGP",
+]);
+
+export function countryRank(code: string): 1 | 2 | 3 {
+  if (RANK1_CODES.has(code)) return 1;
+  if (RANK3_CODES.has(code)) return 3;
+  return 2;
+}
+
+export function countriesByMaxRank(maxRank: 1 | 2 | 3): Country[] {
+  return countries.filter((c) => countryRank(c.code) <= maxRank);
+}
+
 // ─── filtering ───────────────────────────────────────────────────────────────
 
 export function filterCountries(category: Category): Country[] {

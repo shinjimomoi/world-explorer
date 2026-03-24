@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Difficulty } from "@/app/game/WorldMap";
 import { CATEGORY_META, categoryCount, type Category } from "@/data/categories";
-import { Globe, Sun, Compass, Mountain, Landmark, Waves, Minimize2, ChevronLeft, X } from "lucide-react";
+import { Globe, Sun, Compass, Mountain, Landmark, Waves, Minimize2, Swords, ChevronLeft, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -27,6 +27,10 @@ export default function DifficultyModal({
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
 
   function pickDifficulty(d: Difficulty) {
+    if (d === "survival") {
+      onSelect(d, "All World");
+      return;
+    }
     setDifficulty(d);
     setStep("category");
   }
@@ -99,6 +103,21 @@ export default function DifficultyModal({
               </p>
               <p className="mt-0.5 text-sm text-foreground-muted">
                 No hints · World view
+              </p>
+            </button>
+
+            <button
+              onClick={() => pickDifficulty("survival")}
+              className="group cursor-pointer rounded-xl border border-border bg-surface p-4 text-left transition-all duration-150 hover:bg-[#1a1a1a] hover:border-[#333333] active:scale-[0.98]"
+            >
+              <p className="flex items-center gap-2 font-bold text-foreground transition-colors group-hover:text-accent">
+                <Swords className="h-4 w-4" strokeWidth={1.5} /> Survival
+              </p>
+              <p className="mt-1 text-sm text-foreground-muted">
+                3 lives · Progressive difficulty
+              </p>
+              <p className="mt-0.5 text-sm text-foreground-muted">
+                How far can you go?
               </p>
             </button>
           </div>

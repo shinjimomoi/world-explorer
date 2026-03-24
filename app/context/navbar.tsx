@@ -15,6 +15,11 @@ export interface GameNavState {
   timerColor: string;
   isResult: boolean;
   onQuit: () => void;
+  // Survival mode fields
+  survival?: boolean;
+  lives?: number;
+  maxLives?: number;
+  tier?: string;
 }
 
 export type NavbarState = GameNavState | { active: false };

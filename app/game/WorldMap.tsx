@@ -19,8 +19,8 @@ import { saveScore } from "@/lib/leaderboard";
 import { useNavbar } from "@/app/context/navbar";
 import DifficultyModal from "@/app/components/DifficultyModal";
 import ScoreCard from "@/app/components/ScoreCard";
-import { filterCountries, CONTINENT_MAP, type Category } from "@/data/categories";
-import { Flame, CheckCircle, Camera, RotateCcw } from "lucide-react";
+import { filterCountries, CONTINENT_MAP, countriesByMaxRank, type Category } from "@/data/categories";
+import { Flame, CheckCircle, Camera, RotateCcw, Skull, Heart } from "lucide-react";
 import { useUser, SignInButton } from "@clerk/nextjs";
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -32,6 +32,14 @@ const MAX_POINTS = 1000;
 const STREAK_THRESHOLD = 500;
 const RESULT_MS = 3000;
 const INTRO_MS = 3000;
+const SURVIVAL_LIVES = 3;
+const SURVIVAL_TIMER = 20;
+
+function survivalTier(round: number): { name: string; maxRank: 1 | 2 | 3; showHint: boolean; timerSeconds: number; borderOpacity: number } {
+  if (round <= 10) return { name: "EASY", maxRank: 1, showHint: true, timerSeconds: 0, borderOpacity: 1 };
+  if (round <= 20) return { name: "MEDIUM", maxRank: 2, showHint: false, timerSeconds: 0, borderOpacity: 0.2 };
+  return { name: "HARD", maxRank: 3, showHint: false, timerSeconds: SURVIVAL_TIMER, borderOpacity: 0 };
+}
 const DEFAULT_PROJECTION: { scale: number; center: [number, number] } = {
   scale: 160,
   center: [0, 10],
@@ -39,7 +47,7 @@ const DEFAULT_PROJECTION: { scale: number; center: [number, number] } = {
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
-export type Difficulty = "easy" | "hard";
+export type Difficulty = "easy" | "hard" | "survival";
 
 interface ClickInfo {
   lat: number;
@@ -202,6 +210,7 @@ interface MapCanvasProps {
   projectionConfig: { scale: number; center: [number, number] };
   mapZoom: ZoomState;
   onZoomChange: (z: ZoomState) => void;
+  borderOpacity?: number;
 }
 
 const MapCanvas = memo(function MapCanvas({
@@ -210,6 +219,7 @@ const MapCanvas = memo(function MapCanvas({
   projectionConfig,
   mapZoom,
   onZoomChange,
+  borderOpacity = 1,
 }: MapCanvasProps) {
   const disabled = result !== null;
 
@@ -263,19 +273,25 @@ const MapCanvas = memo(function MapCanvas({
                     fill: "#1a1a1a",
                     stroke: "#2a2a2a",
                     strokeWidth: 0.5,
+                    strokeOpacity: borderOpacity,
                     outline: "none",
+                    transition: "stroke-opacity 1s ease",
                   },
                   hover: {
                     fill: disabled ? "#1a1a1a" : "#2a2a2a",
                     stroke: disabled ? "#2a2a2a" : "#333333",
                     strokeWidth: 0.5,
+                    strokeOpacity: borderOpacity,
                     outline: "none",
+                    transition: "stroke-opacity 1s ease",
                   },
                   pressed: {
                     fill: "#1e2a1e",
                     stroke: "#2a3a2a",
                     strokeWidth: 0.75,
+                    strokeOpacity: borderOpacity,
                     outline: "none",
+                    transition: "stroke-opacity 1s ease",
                   },
                 }}
               />
@@ -432,12 +448,18 @@ function RoundIntro({
   country,
   hint,
   fading,
+  message,
+  survival,
+  lives,
 }: {
   round: number;
   totalRounds: number;
   country: Country;
   hint?: string;
   fading: boolean;
+  message?: string | null;
+  survival?: boolean;
+  lives?: number;
 }) {
   return (
     <div className="absolute inset-0 z-20 flex items-center justify-center">
@@ -454,12 +476,28 @@ function RoundIntro({
             : "introIn 200ms ease-out both",
         }}
       >
+        {message && (
+          <p className="mb-3 text-sm font-semibold text-accent">{message}</p>
+        )}
         <p
           className="mb-3 text-[11px] font-medium uppercase text-accent"
           style={{ letterSpacing: "0.15em" }}
         >
-          Round {round}/{totalRounds}
+          {survival ? `Round ${round}` : `Round ${round}/${totalRounds}`}
         </p>
+        {survival && lives !== undefined && (
+          <div className="mb-3 flex items-center gap-1">
+            {Array.from({ length: SURVIVAL_LIVES }).map((_, i) => (
+              <Heart
+                key={i}
+                className="h-4 w-4"
+                strokeWidth={1.5}
+                fill={i < lives ? "#f87171" : "none"}
+                color={i < lives ? "#f87171" : "#333333"}
+              />
+            ))}
+          </div>
+        )}
         <h2 className="mb-2 text-[32px] font-bold leading-tight text-white">
           {country.name}
         </h2>
@@ -998,6 +1036,172 @@ function EndScreen({
   );
 }
 
+// ─── SurvivalGameOver ────────────────────────────────────────────────────────
+
+function SurvivalGameOver({
+  totalScore,
+  bestStreak,
+  roundsSurvived,
+  rounds,
+  onPlayAgain,
+  userId,
+  userName,
+  isGuest,
+}: {
+  totalScore: number;
+  bestStreak: number;
+  roundsSurvived: number;
+  rounds: RoundRecord[];
+  onPlayAgain: (difficulty: Difficulty, category: Category) => void;
+  userId?: string;
+  userName?: string;
+  isGuest: boolean;
+}) {
+  const [showDifficultyModal, setShowDifficultyModal] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const hasSavedRef = useRef(false);
+
+  const tierReached = roundsSurvived >= 21 ? "Hard" : roundsSurvived >= 11 ? "Medium" : "Easy";
+  const bestRoundScore = rounds.length > 0 ? Math.max(...rounds.map((r) => r.points)) : 0;
+
+  // Auto-save for signed-in users
+  useEffect(() => {
+    if (!userId || !userName || hasSavedRef.current) return;
+    hasSavedRef.current = true;
+    setSaving(true);
+    saveScore(userName, totalScore, bestStreak, "Survival", userId)
+      .then(() => setSaved(true))
+      .catch(() => {
+        setSaveError("Failed to save.");
+        hasSavedRef.current = false;
+      })
+      .finally(() => setSaving(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleSave() {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await saveScore(trimmed, totalScore, bestStreak, "Survival", userId);
+      setSaved(true);
+    } catch {
+      setSaveError("Failed to save. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-1 flex-col overflow-y-auto">
+      <div className="mx-auto w-full max-w-xl px-4 py-6 sm:py-8">
+        {/* Hero */}
+        <div className="mb-6 text-center sm:mb-8">
+          <Skull className="mx-auto mb-3 h-10 w-10 text-[#f87171]" strokeWidth={1.5} />
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
+            Game Over
+          </p>
+          <h1 className="text-3xl font-bold text-foreground sm:text-4xl">
+            You survived {roundsSurvived} rounds
+          </h1>
+        </div>
+
+        {/* Stats */}
+        <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="rounded-xl border border-border bg-surface p-3 text-center">
+            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">Score</p>
+            <p className="mt-1 font-mono text-xl font-bold text-accent">{totalScore.toLocaleString()}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-surface p-3 text-center">
+            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">Best Round</p>
+            <p className="mt-1 font-mono text-xl font-bold text-foreground">{bestRoundScore.toLocaleString()}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-surface p-3 text-center">
+            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">Streak</p>
+            <p className="mt-1 font-mono text-xl font-bold text-foreground">
+              <span className="inline-flex items-center gap-1">
+                <Flame className="h-4 w-4 text-accent" strokeWidth={1.5} /> {bestStreak}
+              </span>
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-surface p-3 text-center">
+            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">Tier</p>
+            <p className="mt-1 text-xl font-bold text-foreground">{tierReached}</p>
+          </div>
+        </div>
+
+        {/* Save to leaderboard */}
+        <div className="mb-4 rounded-xl border border-border bg-surface p-4 sm:mb-6 sm:p-5">
+          {saved ? (
+            <div className="flex items-center gap-3">
+              <CheckCircle className="h-5 w-5 text-accent" strokeWidth={1.5} />
+              <div>
+                <p className="text-sm font-semibold text-foreground">Score saved!</p>
+                <a href="/leaderboard?category=Survival" className="text-xs text-accent transition-colors hover:text-accent-hover">
+                  View leaderboard →
+                </a>
+              </div>
+            </div>
+          ) : saving && userId ? (
+            <div className="flex items-center gap-3">
+              <div className="h-4 w-4 shrink-0 rounded-full border-2 border-[#333333] border-t-accent" style={{ animation: "spin 0.6s linear infinite" }} />
+              <p className="text-sm text-foreground-muted">Saving score…</p>
+              <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+            </div>
+          ) : (
+            <>
+              <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">Save to Leaderboard</p>
+              <div className="flex gap-2">
+                <input type="text" placeholder="Your name" maxLength={24} value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSave()} disabled={saving} className="min-w-0 flex-1 rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus:border-accent focus:outline-none disabled:opacity-50" />
+                <button onClick={handleSave} disabled={!name.trim() || saving} className="cursor-pointer rounded-lg bg-[#f0f0f0] px-4 py-2 text-sm font-semibold text-[#0a0a0a] transition-all duration-150 hover:bg-[#e5e5e5] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40">
+                  {saving ? "Saving…" : "Save"}
+                </button>
+              </div>
+              {saveError && <p className="mt-2 text-xs text-red-400">{saveError}</p>}
+            </>
+          )}
+        </div>
+
+        {/* Sign-in nudge for guests */}
+        {isGuest && (
+          <div className="mb-4 rounded-xl border border-[#222222] bg-[#111111] p-4 sm:mb-6">
+            <p className="text-[13px] text-[#666666]">
+              You survived {roundsSurvived} rounds! Sign in to save your progress and track your survival records.
+            </p>
+            <SignInButton mode="modal">
+              <button className="mt-2 cursor-pointer text-[13px] font-semibold text-accent transition-all duration-150 hover:text-accent-hover">
+                Sign in with Google
+              </button>
+            </SignInButton>
+          </div>
+        )}
+
+        {/* Play Again */}
+        <button
+          onClick={() => setShowDifficultyModal(true)}
+          className="w-full cursor-pointer inline-flex items-center justify-center gap-2 rounded-lg border border-[#333333] py-3 text-sm font-semibold text-foreground transition-all duration-150 hover:bg-[#1a1a1a] hover:border-[#555555] active:scale-[0.98]"
+        >
+          <RotateCcw className="h-4 w-4" strokeWidth={1.5} /> Play Again
+        </button>
+
+        {showDifficultyModal && (
+          <DifficultyModal
+            onSelect={(d, c) => {
+              setShowDifficultyModal(false);
+              onPlayAgain(d, c);
+            }}
+            onClose={() => setShowDifficultyModal(false)}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── WorldMap — game root ─────────────────────────────────────────────────────
 
 export default function WorldMap({
@@ -1007,7 +1211,7 @@ export default function WorldMap({
   difficulty: Difficulty;
   category: Category;
 }) {
-  const roundSeconds = difficulty === "hard" ? 15 : 30;
+  const roundSeconds = difficulty === "survival" ? 999 : difficulty === "hard" ? 15 : 30;
   const router = useRouter();
   const { setState: setNavbarState } = useNavbar();
   const { isSignedIn, user: clerkUser } = useUser();
@@ -1023,8 +1227,19 @@ export default function WorldMap({
   const bestStreakRef = useRef(0);
 
   const pool = filterCountries(category);
+  const usedCountriesRef = useRef(new Set<string>());
 
   function drawNext(): Country {
+    if (difficulty === "survival") {
+      const tier = survivalTier(roundRef.current);
+      const tierPool = countriesByMaxRank(tier.maxRank).filter(
+        (c) => !usedCountriesRef.current.has(c.code)
+      );
+      const source = tierPool.length > 0 ? tierPool : countriesByMaxRank(tier.maxRank);
+      const pick = source[Math.floor(Math.random() * source.length)];
+      usedCountriesRef.current.add(pick.code);
+      return pick;
+    }
     if (queueRef.current.length === 0) queueRef.current = shuffled(pool);
     return queueRef.current.pop()!;
   }
@@ -1049,13 +1264,24 @@ export default function WorldMap({
   const [countdown, setCountdown] = useState(3);
   const [showIntro, setShowIntro] = useState(true);
   const [introFading, setIntroFading] = useState(false);
+  const [introMessage, setIntroMessage] = useState<string | null>(null);
+  const [lives, setLives] = useState(SURVIVAL_LIVES);
+  const isSurvival = difficulty === "survival";
   const [mapZoom, setMapZoom] = useState<ZoomState>({
     center: [0, 0],
     zoom: 1,
   });
 
   // ── projection config (memo'd so MapCanvas doesn't re-render on timer ticks)
+  const currentTier = isSurvival ? survivalTier(round) : null;
   const { projectionConfig, hint } = useMemo(() => {
+    if (isSurvival && currentTier?.showHint && result === null) {
+      const zoom = getZoomConfig(currentCountry);
+      return {
+        projectionConfig: { scale: zoom.scale, center: zoom.center },
+        hint: zoom.region || undefined,
+      };
+    }
     if (difficulty === "easy" && result === null) {
       const zoom = getZoomConfig(currentCountry);
       return {
@@ -1064,7 +1290,7 @@ export default function WorldMap({
       };
     }
     return { projectionConfig: DEFAULT_PROJECTION, hint: undefined };
-  }, [difficulty, result, currentCountry]);
+  }, [difficulty, isSurvival, currentTier?.showHint, result, currentCountry]);
 
   // ── submit result (shared by click and timeout) ───────────────────────────
   const submitResult = useCallback((info: ClickInfo | null) => {
@@ -1110,6 +1336,21 @@ export default function WorldMap({
     });
   }, []); // stable: only refs + functional setters
 
+  // ── survival: lose life on bad score ─────────────────────────────────────
+  useEffect(() => {
+    if (!isSurvival || !result) return;
+    if (result.points <= STREAK_THRESHOLD) {
+      setLives((prev) => {
+        const next = prev - 1;
+        if (next <= 0) {
+          // Game over — will be picked up by the lives === 0 check
+          setTimeout(() => setGamePhase("ended"), RESULT_MS);
+        }
+        return next;
+      });
+    }
+  }, [result, isSurvival]);
+
   // ── sync mastery to Supabase after each round (signed-in only) ──────────
   useEffect(() => {
     if (!result || !isSignedIn || !clerkUser) return;
@@ -1133,7 +1374,7 @@ export default function WorldMap({
   // ── advance to next round (or end game) ───────────────────────────────────
   // roundSeconds is stable for the component lifetime (difficulty prop is fixed per game)
   const advance = useCallback(() => {
-    if (roundRef.current >= TOTAL_ROUNDS) {
+    if (!isSurvival && roundRef.current >= TOTAL_ROUNDS) {
       setGamePhase("ended");
       return;
     }
@@ -1142,7 +1383,19 @@ export default function WorldMap({
     currentCountryRef.current = drawNext();
     acceptingRef.current = false;
 
-    setTimerSecondsLeft(roundSeconds);
+    // Survival: set timer based on tier
+    if (isSurvival) {
+      const tier = survivalTier(next);
+      setTimerSecondsLeft(tier.timerSeconds || 999);
+      // Tier transition messages
+      if (next === 11) setIntroMessage("Borders fading...");
+      else if (next === 21) setIntroMessage("No more borders. No more hints.");
+      else setIntroMessage(null);
+    } else {
+      setTimerSecondsLeft(roundSeconds);
+      setIntroMessage(null);
+    }
+
     setResult(null);
     setCurrentCountry(currentCountryRef.current!);
     setRound(next);
@@ -1171,6 +1424,9 @@ export default function WorldMap({
     setMapZoom({ center: [0, 0], zoom: 1 });
     setShowIntro(true);
     setIntroFading(false);
+    setIntroMessage(null);
+    setLives(SURVIVAL_LIVES);
+    usedCountriesRef.current = new Set();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── round intro: show popup then start timer ─────────────────────────────
@@ -1189,17 +1445,19 @@ export default function WorldMap({
   }, [showIntro, gamePhase]);
 
   // ── round timer: counts down while in guessing phase ─────────────────────
+  const hasTimer = isSurvival ? (currentTier?.timerSeconds ?? 0) > 0 : true;
   useEffect(() => {
-    if (showIntro || result !== null || gamePhase !== "playing") return;
+    if (!hasTimer || showIntro || result !== null || gamePhase !== "playing") return;
     const iv = setInterval(
       () => setTimerSecondsLeft((s) => Math.max(0, s - 1)),
       1000
     );
     return () => clearInterval(iv);
-  }, [showIntro, result, round, gamePhase]);
+  }, [hasTimer, showIntro, result, round, gamePhase]);
 
   // ── timeout: fires when timer hits 0 in guessing phase ───────────────────
   useEffect(() => {
+    if (!hasTimer) return;
     if (timerSecondsLeft > 0) return;
     if (showIntro) return;
     if (!acceptingRef.current) return;
@@ -1208,11 +1466,13 @@ export default function WorldMap({
 
     acceptingRef.current = false;
     submitResult(null);
-  }, [timerSecondsLeft, showIntro, result, gamePhase, submitResult]);
+  }, [hasTimer, timerSecondsLeft, showIntro, result, gamePhase, submitResult]);
 
   // ── auto-advance after showing result ────────────────────────────────────
   useEffect(() => {
     if (!result || gamePhase !== "playing") return;
+    // In survival, don't auto-advance if out of lives (game over handled separately)
+    if (isSurvival && lives <= 0) return;
     setCountdown(3);
     const iv = setInterval(() => setCountdown((c) => c - 1), 1000);
     const to = setTimeout(advance, RESULT_MS);
@@ -1220,7 +1480,7 @@ export default function WorldMap({
       clearInterval(iv);
       clearTimeout(to);
     };
-  }, [result, gamePhase, advance]);
+  }, [result, gamePhase, advance, isSurvival, lives]);
 
   // ── stable click handler ──────────────────────────────────────────────────
   const handleClick = useCallback(
@@ -1242,12 +1502,13 @@ export default function WorldMap({
   // ── sync game state into the merged navbar ────────────────────────────────
   useEffect(() => {
     if (gamePhase !== "playing") return;
+    const effectiveTimerSec = isSurvival ? (currentTier?.timerSeconds ?? 0) : roundSeconds;
     const timerPct =
-      showIntro || result !== null ? 0 : (timerSecondsLeft / roundSeconds) * 100;
+      !hasTimer || showIntro || result !== null ? 0 : (timerSecondsLeft / effectiveTimerSec) * 100;
     const timerColor =
-      timerSecondsLeft > roundSeconds * 0.5
+      timerSecondsLeft > effectiveTimerSec * 0.5
         ? "#4ade80"
-        : timerSecondsLeft > roundSeconds * 0.25
+        : timerSecondsLeft > effectiveTimerSec * 0.25
         ? "#fbbf24"
         : "#f87171";
     setNavbarState({
@@ -1256,13 +1517,17 @@ export default function WorldMap({
       capital: currentCountry.capital,
       hint,
       round,
-      totalRounds: TOTAL_ROUNDS,
+      totalRounds: isSurvival ? 0 : TOTAL_ROUNDS,
       totalScore,
       streak,
-      timerPct,
+      timerPct: hasTimer ? timerPct : 0,
       timerColor,
       isResult: result !== null,
       onQuit: handleQuit,
+      survival: isSurvival,
+      lives: isSurvival ? lives : undefined,
+      maxLives: isSurvival ? SURVIVAL_LIVES : undefined,
+      tier: isSurvival ? currentTier?.name : undefined,
     });
   }, [
     gamePhase,
@@ -1275,6 +1540,10 @@ export default function WorldMap({
     showIntro,
     result,
     roundSeconds,
+    isSurvival,
+    currentTier,
+    hasTimer,
+    lives,
     setNavbarState,
     handleQuit,
   ]);
@@ -1340,6 +1609,28 @@ export default function WorldMap({
   // ── render ────────────────────────────────────────────────────────────────
 
   if (gamePhase === "ended") {
+    const playAgainHandler = (d: Difficulty, c: Category) => {
+      if (d === difficulty && c === category) resetGame();
+      else router.push(`/game?difficulty=${d}&category=${c}`);
+    };
+    const uid = isSignedIn && clerkUser ? clerkUser.id : undefined;
+    const uname = isSignedIn && clerkUser ? (clerkUser.fullName ?? clerkUser.username ?? "") : undefined;
+
+    if (isSurvival) {
+      return (
+        <SurvivalGameOver
+          totalScore={totalScore}
+          bestStreak={bestStreak}
+          roundsSurvived={rounds.length}
+          rounds={rounds}
+          userId={uid}
+          userName={uname}
+          isGuest={!isSignedIn}
+          onPlayAgain={playAgainHandler}
+        />
+      );
+    }
+
     return (
       <EndScreen
         totalScore={totalScore}
@@ -1347,13 +1638,10 @@ export default function WorldMap({
         difficulty={difficulty}
         category={category}
         rounds={rounds}
-        userId={isSignedIn && clerkUser ? clerkUser.id : undefined}
-        userName={isSignedIn && clerkUser ? (clerkUser.fullName ?? clerkUser.username ?? "") : undefined}
+        userId={uid}
+        userName={uname}
         isGuest={!isSignedIn}
-        onPlayAgain={(d, c) => {
-          if (d === difficulty && c === category) resetGame();
-          else router.push(`/game?difficulty=${d}&category=${c}`);
-        }}
+        onPlayAgain={playAgainHandler}
       />
     );
   }
@@ -1371,6 +1659,7 @@ export default function WorldMap({
           projectionConfig={projectionConfig}
           mapZoom={mapZoom}
           onZoomChange={setMapZoom}
+          borderOpacity={isSurvival ? (currentTier?.borderOpacity ?? 1) : 1}
         />
       </div>
 
@@ -1382,6 +1671,9 @@ export default function WorldMap({
           country={currentCountry}
           hint={hint}
           fading={introFading}
+          message={introMessage}
+          survival={isSurvival}
+          lives={isSurvival ? lives : undefined}
         />
       )}
 

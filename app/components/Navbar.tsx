@@ -7,7 +7,7 @@ import { useNavbar, type GameNavState } from "@/app/context/navbar";
 import DifficultyModal from "./DifficultyModal";
 import type { Difficulty } from "@/app/game/WorldMap";
 import type { Category } from "@/data/categories";
-import { X, Flame } from "lucide-react";
+import { X, Flame, Heart } from "lucide-react";
 import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 
 export default function Navbar() {
@@ -100,16 +100,40 @@ function GameNavbar({ s }: { s: GameNavState }) {
         </p>
       </div>
 
-      {/* Right: streak + round + score */}
-      <div className="shrink-0 whitespace-nowrap text-right font-mono text-xs text-foreground-muted">
-        {s.streak >= 3 && (
-          <span className="mr-1.5 inline-flex items-center gap-0.5 font-semibold text-accent">
-            <Flame className="h-3 w-3" strokeWidth={1.5} />{s.streak}
-          </span>
+      {/* Right: streak/lives + round + score */}
+      <div className="flex shrink-0 items-center gap-2 whitespace-nowrap text-right font-mono text-xs text-foreground-muted">
+        {s.survival ? (
+          <>
+            <span className="inline-flex items-center gap-0.5">
+              {Array.from({ length: s.maxLives ?? 3 }).map((_, i) => (
+                <Heart
+                  key={i}
+                  className="h-3 w-3"
+                  strokeWidth={1.5}
+                  fill={i < (s.lives ?? 0) ? "#f87171" : "none"}
+                  color={i < (s.lives ?? 0) ? "#f87171" : "#333333"}
+                />
+              ))}
+            </span>
+            {s.tier && (
+              <span className="rounded bg-surface-elevated px-1.5 py-0.5 text-[10px] font-medium text-foreground-muted">
+                {s.tier}
+              </span>
+            )}
+            <span>R{s.round} · {s.totalScore.toLocaleString()}</span>
+          </>
+        ) : (
+          <>
+            {s.streak >= 3 && (
+              <span className="inline-flex items-center gap-0.5 font-semibold text-accent">
+                <Flame className="h-3 w-3" strokeWidth={1.5} />{s.streak}
+              </span>
+            )}
+            <span>
+              R{s.round}/{s.totalRounds} · {s.totalScore.toLocaleString()}
+            </span>
+          </>
         )}
-        <span>
-          R{s.round}/{s.totalRounds} · {s.totalScore.toLocaleString()}
-        </span>
       </div>
 
       {/* Timer bar pinned to bottom edge */}

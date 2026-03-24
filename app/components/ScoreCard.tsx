@@ -3,7 +3,7 @@ import React from "react";
 interface ScoreCardProps {
   totalScore: number;
   bestStreak: number;
-  difficulty: "easy" | "hard";
+  difficulty: string;
   category: string;
   rating: string;
   maxScore: number;

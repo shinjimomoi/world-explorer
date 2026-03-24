@@ -14,7 +14,7 @@ export default async function GamePage({
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       <WorldMap
         key={`${difficulty}-${validCategory}`}
-        difficulty={difficulty === "hard" ? "hard" : "easy"}
+        difficulty={difficulty === "hard" ? "hard" : difficulty === "survival" ? "survival" : "easy"}
         category={validCategory}
       />
     </div>

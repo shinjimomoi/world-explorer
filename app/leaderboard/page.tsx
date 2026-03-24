@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { getTopScores, type LeaderboardEntry } from "@/lib/leaderboard";
 import { Flame } from "lucide-react";
 
-const TABS = ["All", "Africa", "Americas", "Asia", "Europe", "Oceania", "Microstates"] as const;
+const TABS = ["All", "Africa", "Americas", "Asia", "Europe", "Oceania", "Microstates", "Survival"] as const;
 
 export default function LeaderboardPage() {
   return (
