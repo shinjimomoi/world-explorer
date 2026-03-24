@@ -123,18 +123,10 @@ export default function ResultPopup({
         <div className="flex items-center gap-4">
           {/* Distance scale bar */}
           {!result.timedOut && distKm !== null ? (
-            <div className="relative h-1.5 flex-1 overflow-visible rounded-full bg-[#1a1a1a]">
+            <div className="h-1 flex-1 overflow-hidden rounded-sm bg-[#222222]">
               <div
-                className="absolute left-0 top-0 h-full rounded-full transition-[width] duration-700"
+                className="h-full rounded-sm transition-[width] duration-700"
                 style={{ width: `${Math.max(distPct, 0.5)}%`, backgroundColor: dColor }}
-              />
-              <div
-                className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full border-2 border-[#0a0a0a]"
-                style={{
-                  left: `${Math.min(distPct, 97)}%`,
-                  backgroundColor: dColor,
-                  transition: "left 700ms ease",
-                }}
               />
             </div>
           ) : (
