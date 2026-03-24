@@ -11,7 +11,7 @@ import {
 } from "react-simple-maps";
 import { countries, countriesByNumericCode } from "@/data/countries";
 import { filterCountries } from "@/data/categories";
-import { Flame, Shield, Swords, Plus, Minus, RotateCcw } from "lucide-react";
+import { Flame, Swords, Plus, Minus, RotateCcw, Play } from "lucide-react";
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
@@ -473,42 +473,94 @@ export default function ProfilePage() {
         )}
 
         {/* ── Survival Stats ────────────────────────────────────────── */}
-        <div className="mb-6 rounded-xl border border-border bg-surface p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <Shield className="h-4 w-4 text-foreground-muted" strokeWidth={1.5} />
-            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
-              Survival Mode
-            </p>
-          </div>
-          {data.survival.games > 0 ? (
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <p className="text-[11px] text-foreground-muted">Games</p>
-                <p className="font-mono text-lg font-bold text-foreground">{data.survival.games}</p>
-              </div>
-              <div>
-                <p className="text-[11px] text-foreground-muted">Best Score</p>
-                <p className="font-mono text-lg font-bold text-accent">{data.survival.bestScore.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-[11px] text-foreground-muted">Best Streak</p>
-                <p className="font-mono text-lg font-bold text-foreground">
-                  <span className="inline-flex items-center gap-1">
-                    <Flame className="h-3.5 w-3.5 text-accent" strokeWidth={1.5} /> {data.survival.bestStreak}
+        {(() => {
+          const sv = data.survival;
+          // Estimate best run from best streak (proxy until rounds_survived is stored)
+          const bestRun = sv.bestStreak > 0 ? sv.bestStreak + 2 : 0;
+          const furthestTier = bestRun >= 21 ? "hard" : bestRun >= 11 ? "medium" : bestRun > 0 ? "easy" : "none";
+
+          const tiers: { id: string; label: string; rounds: string }[] = [
+            { id: "easy", label: "Easy", rounds: "Rounds 1–10" },
+            { id: "medium", label: "Medium", rounds: "Rounds 11–20" },
+            { id: "hard", label: "Hard", rounds: "Rounds 21+" },
+          ];
+
+          function tierStyle(id: string) {
+            if (furthestTier === "none") return { bg: "#111111", border: "#222222", label: "#333333", rounds: "#2a2a2a" };
+            const reached = (id === "easy") || (id === "medium" && (furthestTier === "medium" || furthestTier === "hard")) || (id === "hard" && furthestTier === "hard");
+            const isFurthest = id === furthestTier;
+            if (isFurthest) return { bg: "#0f200f", border: "#4ade80", label: "#4ade80", rounds: "#4ade80" };
+            if (reached) return { bg: "#0f1a0f", border: "#2a3a2a", label: "#4ade80", rounds: "#2a5a2a" };
+            return { bg: "#111111", border: "#222222", label: "#333333", rounds: "#2a2a2a" };
+          }
+
+          return (
+            <div className="mb-6 flex flex-col gap-4 rounded-xl border border-[#222222] bg-[#111111] p-5">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Swords className="h-3.5 w-3.5 text-[#555555]" strokeWidth={1.5} />
+                  <span className="text-[11px] font-medium uppercase text-[#555555]" style={{ letterSpacing: "0.1em" }}>
+                    Survival Mode
                   </span>
-                </p>
+                </div>
+                {bestRun > 0 && (
+                  <span className="text-[12px] text-[#555555]">
+                    Best run: <span className="font-semibold text-accent">{bestRun}</span> rounds
+                  </span>
+                )}
               </div>
+
+              {/* Stats row */}
+              <div className="grid grid-cols-3 overflow-hidden rounded-lg bg-[#222222]" style={{ gap: 1 }}>
+                <div className="bg-[#111111] px-3 py-3 text-center">
+                  <p className="text-[11px] font-medium uppercase text-[#444444]" style={{ letterSpacing: "0.08em" }}>Games</p>
+                  <p className="mt-1 font-mono text-xl font-bold text-foreground">{sv.games}</p>
+                </div>
+                <div className="bg-[#111111] px-3 py-3 text-center">
+                  <p className="text-[11px] font-medium uppercase text-[#444444]" style={{ letterSpacing: "0.08em" }}>Best Score</p>
+                  <p className="mt-1 font-mono text-xl font-bold text-accent">{sv.bestScore.toLocaleString()}</p>
+                </div>
+                <div className="bg-[#111111] px-3 py-3 text-center">
+                  <p className="text-[11px] font-medium uppercase text-[#444444]" style={{ letterSpacing: "0.08em" }}>Best Streak</p>
+                  <p className="mt-1 font-mono text-xl font-bold text-foreground">
+                    <span className="inline-flex items-center justify-center gap-1">
+                      <Flame className="h-4 w-4 text-accent" strokeWidth={1.5} />{sv.bestStreak}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Tier progression */}
+              <div className="grid grid-cols-3 gap-2">
+                {tiers.map((t) => {
+                  const s = tierStyle(t.id);
+                  const isFurthest = t.id === furthestTier;
+                  return (
+                    <div
+                      key={t.id}
+                      className="rounded-lg px-3 py-2 text-center"
+                      style={{ background: s.bg, border: `1px solid ${s.border}` }}
+                    >
+                      <p className="text-[12px] font-semibold" style={{ color: s.label }}>
+                        {isFurthest && "← "}{t.label}
+                      </p>
+                      <p className="mt-0.5 text-[10px]" style={{ color: s.rounds }}>{t.rounds}</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Play button */}
+              <a
+                href="/game?difficulty=survival&category=All%20World"
+                className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#333333] py-2.5 text-sm font-semibold text-foreground transition-all duration-150 hover:bg-[#1a1a1a] hover:border-[#444444] active:scale-[0.98]"
+              >
+                <Play className="h-3.5 w-3.5" strokeWidth={1.5} /> Play survival
+              </a>
             </div>
-          ) : (
-            <p className="text-sm text-foreground-muted">No survival games yet.</p>
-          )}
-          <a
-            href="/game?difficulty=survival&category=All%20World"
-            className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#333333] px-4 py-2 text-sm font-semibold text-foreground transition-all duration-150 hover:bg-[#1a1a1a] hover:border-[#555555] active:scale-[0.98]"
-          >
-            <Swords className="h-4 w-4" strokeWidth={1.5} /> Play Survival
-          </a>
-        </div>
+          );
+        })()}
       </div>
     </div>
   );
