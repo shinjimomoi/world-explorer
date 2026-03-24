@@ -5,7 +5,7 @@ import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { countries } from "@/data/countries";
 import { CONTINENT_MAP, filterCountries } from "@/data/categories";
-import { Flame } from "lucide-react";
+import { Flame, Shield, Swords } from "lucide-react";
 
 // ─── XP / Level helpers ──────────────────────────────────────────────────────
 
@@ -68,6 +68,7 @@ interface ProfileData {
   totalGames: number;
   accuracy: number;
   masteredCount: number;
+  survival: { games: number; bestScore: number; bestStreak: number };
 }
 
 // ─── Regions for mastery breakdown ───────────────────────────────────────────
@@ -301,6 +302,43 @@ export default function ProfilePage() {
             </div>
           </div>
         )}
+        {/* ── Survival Stats ────────────────────────────────────────── */}
+        <div className="mb-6 rounded-xl border border-border bg-surface p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <Shield className="h-4 w-4 text-foreground-muted" strokeWidth={1.5} />
+            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
+              Survival Mode
+            </p>
+          </div>
+          {data.survival.games > 0 ? (
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <p className="text-[11px] text-foreground-muted">Games</p>
+                <p className="font-mono text-lg font-bold text-foreground">{data.survival.games}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-foreground-muted">Best Score</p>
+                <p className="font-mono text-lg font-bold text-accent">{data.survival.bestScore.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-foreground-muted">Best Streak</p>
+                <p className="font-mono text-lg font-bold text-foreground">
+                  <span className="inline-flex items-center gap-1">
+                    <Flame className="h-3.5 w-3.5 text-accent" strokeWidth={1.5} /> {data.survival.bestStreak}
+                  </span>
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-foreground-muted">No survival games yet.</p>
+          )}
+          <a
+            href="/game?difficulty=survival&category=All%20World"
+            className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#333333] px-4 py-2 text-sm font-semibold text-foreground transition-all duration-150 hover:bg-[#1a1a1a] hover:border-[#555555] active:scale-[0.98]"
+          >
+            <Swords className="h-4 w-4" strokeWidth={1.5} /> Play Survival
+          </a>
+        </div>
       </div>
     </div>
   );

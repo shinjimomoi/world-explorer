@@ -54,6 +54,22 @@ export async function GET(req: Request) {
     // Mastered count
     const masteredCount = (mastery ?? []).filter((m) => m.correct_count >= 3).length;
 
+    // Survival stats
+    const { data: survivalScores } = await supabaseAdmin
+      .from("scores")
+      .select("score, best_streak, created_at")
+      .eq("user_id", userId)
+      .eq("category", "Survival")
+      .order("score", { ascending: false });
+
+    const survivalGames = survivalScores?.length ?? 0;
+    const survivalBestScore = survivalScores?.[0]?.score ?? 0;
+    const survivalBestStreak = survivalGames > 0
+      ? Math.max(...(survivalScores ?? []).map((s) => s.best_streak ?? 0))
+      : 0;
+    // Approximate rounds from score: each correct ~500-1000 pts
+    // We can't know exact rounds without storing them, so show game count + best score
+
     const result = {
       user,
       mastery: mastery ?? [],
@@ -64,6 +80,11 @@ export async function GET(req: Request) {
         ? Math.round(((user?.total_correct ?? 0) / user.total_guesses) * 100)
         : 0,
       masteredCount,
+      survival: {
+        games: survivalGames,
+        bestScore: survivalBestScore,
+        bestStreak: survivalBestStreak,
+      },
     };
 
     console.log("[profile] Returning:", {
