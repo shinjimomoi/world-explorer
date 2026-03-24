@@ -1,6 +1,6 @@
 import { Flame } from "lucide-react";
 import type { GuessResult } from "../../types";
-import { TOTAL_ROUNDS, MAX_POINTS, RESULT_MS } from "../../types";
+import { TOTAL_ROUNDS, RESULT_MS } from "../../types";
 import { ptColor, streakMultiplier } from "../../utils";
 
 const MAX_DISTANCE = 20000;
@@ -47,15 +47,17 @@ export default function ResultPopup({
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10">
       <div
-        className="pointer-events-auto border-t border-[#222222] px-5 py-5"
+        className="pointer-events-auto border-t border-[#222222]"
         style={{
           background: "rgba(10, 10, 10, 0.95)",
           backdropFilter: "blur(20px)",
           animation: "sheetSlideUp 250ms ease-out both",
+          padding: "20px 24px",
+          minHeight: 180,
         }}
       >
         {/* ── Row 1: headline + streak ── */}
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-5 flex items-center justify-between">
           <p
             className="text-lg font-bold"
             style={{ color: result.timedOut ? "#f87171" : color }}
@@ -80,19 +82,19 @@ export default function ResultPopup({
 
         {/* ── Row 2: distance + points ── */}
         {!result.timedOut ? (
-          <div className="mb-4 flex items-start gap-6">
+          <div className="mb-5 flex items-start gap-6">
             {/* Distance */}
             <div className="flex-1">
               <p className="font-mono text-[28px] font-bold leading-none text-foreground">
                 {distKm !== null ? `${distKm.toLocaleString()} km` : "—"}
               </p>
-              <p className="mt-1 text-sm text-[#666666]">
+              <p className="mt-1.5 text-[13px] text-[#666666]">
                 from {result.country.capital}
               </p>
             </div>
 
             {/* Divider */}
-            <div className="h-12 w-px shrink-0 bg-[#222222]" />
+            <div className="h-14 w-px shrink-0 bg-[#222222]" />
 
             {/* Points */}
             <div className="text-right">
@@ -100,15 +102,15 @@ export default function ResultPopup({
                 +{result.points.toLocaleString()}
               </p>
               {result.multiplier > 1.0 && (
-                <p className="mt-1 font-mono text-[13px] text-[#666666]">
+                <p className="mt-1.5 font-mono text-[13px] text-[#666666]">
                   {result.basePoints.toLocaleString()} × {result.multiplier}×
                 </p>
               )}
             </div>
           </div>
         ) : (
-          <div className="mb-4">
-            <p className="text-sm text-[#666666]">
+          <div className="mb-5">
+            <p className="text-[13px] text-[#666666]">
               Capital of {result.country.name} is{" "}
               <span className="font-semibold text-accent">{result.country.capital}</span>
             </p>
@@ -118,10 +120,11 @@ export default function ResultPopup({
           </div>
         )}
 
-        {/* ── Distance scale bar ── */}
-        {!result.timedOut && distKm !== null && (
-          <div className="mb-4">
-            <div className="relative h-1.5 overflow-hidden rounded-full bg-[#1a1a1a]">
+        {/* ── Row 3: distance bar + next button ── */}
+        <div className="flex items-center gap-4">
+          {/* Distance scale bar */}
+          {!result.timedOut && distKm !== null ? (
+            <div className="relative h-1.5 flex-1 overflow-visible rounded-full bg-[#1a1a1a]">
               <div
                 className="absolute left-0 top-0 h-full rounded-full transition-[width] duration-700"
                 style={{ width: `${Math.max(distPct, 0.5)}%`, backgroundColor: dColor }}
@@ -135,31 +138,11 @@ export default function ResultPopup({
                 }}
               />
             </div>
-            <div className="mt-1 flex justify-between text-[10px] text-[#444444]">
-              <span>0 km</span>
-              <span>20,000 km</span>
-            </div>
-          </div>
-        )}
-
-        {/* ── Bottom row: legend + countdown + next ── */}
-        <div className="flex items-center justify-between">
-          {!result.timedOut ? (
-            <div className="flex gap-4 text-xs text-[#666666]">
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-2 w-2 rounded-full bg-[#4ade80]" />
-                {result.country.capital}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-2 w-2 rounded-full bg-[#f87171]" />
-                Your guess
-              </span>
-            </div>
           ) : (
-            <div />
+            <div className="flex-1" />
           )}
 
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             <span className="font-mono text-xs text-[#444444]">{countdown}s</span>
             <button
               onClick={onAdvance}
@@ -171,7 +154,7 @@ export default function ResultPopup({
         </div>
 
         {/* Auto-advance progress bar */}
-        <div className="mt-3 h-0.5 overflow-hidden rounded-full bg-[#1a1a1a]">
+        <div className="mt-4 h-0.5 overflow-hidden rounded-full bg-[#1a1a1a]">
           <div
             key={`${result.country.numericCode}-${result.guessLat}-${result.guessLng}`}
             className="h-full rounded-full bg-accent"
