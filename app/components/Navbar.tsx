@@ -120,7 +120,7 @@ function GameNavbar({ s }: { s: GameNavState }) {
                 {s.tier}
               </span>
             )}
-            <span>R{s.round} · {s.totalScore.toLocaleString()}</span>
+            <span>Round {s.round} · {s.totalScore.toLocaleString()}</span>
           </>
         ) : (
           <>

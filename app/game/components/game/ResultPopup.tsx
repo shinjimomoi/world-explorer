@@ -17,14 +17,16 @@ export default function ResultPopup({
   newStreak,
   countdown,
   onAdvance,
+  isSurvival,
 }: {
   result: GuessResult;
   round: number;
   newStreak: number;
   countdown: number;
   onAdvance: () => void;
+  isSurvival?: boolean;
 }) {
-  const isLastRound = round >= TOTAL_ROUNDS;
+  const isLastRound = !isSurvival && round >= TOTAL_ROUNDS;
   const color = ptColor(result.points);
   const { label: streakLabel } = streakMultiplier(newStreak);
 

@@ -43,7 +43,7 @@ export interface ZoomState {
 
 export const GEO_URL =
   "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
-export const TOTAL_ROUNDS = process.env.NODE_ENV === "development" ? 3 : 3;
+export const TOTAL_ROUNDS = process.env.NODE_ENV === "development" ? 3 : 10;
 export const MAX_POINTS = 1000;
 export const STREAK_THRESHOLD = 500;
 export const RESULT_MS = 5000;

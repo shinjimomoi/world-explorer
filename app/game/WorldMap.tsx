@@ -195,6 +195,7 @@ export default function WorldMap({
           newStreak={game.resultStreak}
           countdown={game.countdown}
           onAdvance={game.advance}
+          isSurvival={game.isSurvival}
         />
       )}
 
