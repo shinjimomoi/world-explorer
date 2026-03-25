@@ -172,6 +172,7 @@ export default function WorldMap({
           mapZoom={game.mapZoom}
           onZoomChange={game.setMapZoom}
           borderOpacity={game.isSurvival ? (currentTier?.borderOpacity ?? 1) : 1}
+          hintCountry={!game.showIntro && !game.result && hint ? game.currentCountry.name : null}
         />
       </div>
 

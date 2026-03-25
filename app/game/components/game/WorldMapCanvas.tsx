@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import {
   ComposableMap,
   Geographies,
@@ -11,6 +11,8 @@ import {
   useMapContext,
 } from "react-simple-maps";
 import { countriesByNumericCode } from "@/data/countries";
+import { CONTINENT_MAP } from "@/data/categories";
+import { NEIGHBORS } from "@/data/neighbors";
 import type { ClickInfo, GuessResult, D3Projection, ZoomState } from "../../types";
 import { GEO_URL, DEFAULT_PROJECTION } from "../../types";
 import { toSVGCoords } from "../../utils";
@@ -59,6 +61,7 @@ interface MapCanvasProps {
   mapZoom: ZoomState;
   onZoomChange: (z: ZoomState) => void;
   borderOpacity?: number;
+  hintCountry?: string | null;
 }
 
 const MapCanvas = memo(function MapCanvas({
@@ -68,8 +71,30 @@ const MapCanvas = memo(function MapCanvas({
   mapZoom,
   onZoomChange,
   borderOpacity = 1,
+  hintCountry,
 }: MapCanvasProps) {
   const disabled = result !== null;
+
+  // Build set of highlighted countries (target + neighbors, or continent fallback)
+  const hintSet = useMemo(() => {
+    if (!hintCountry) return null;
+    const neighbors = NEIGHBORS[hintCountry] ?? [];
+    if (neighbors.length > 0) {
+      const set = new Set(neighbors);
+      set.add(hintCountry);
+      return set;
+    }
+    // Island fallback: highlight whole continent
+    const numericEntry = Array.from(countriesByNumericCode.values()).find((c) => c.name === hintCountry);
+    if (!numericEntry) return null;
+    const continent = CONTINENT_MAP[numericEntry.code];
+    if (!continent) return null;
+    const set = new Set<string>();
+    for (const [, c] of countriesByNumericCode) {
+      if (CONTINENT_MAP[c.code] === continent) set.add(c.name);
+    }
+    return set;
+  }, [hintCountry]);
 
   return (
     <ComposableMap
@@ -98,52 +123,59 @@ const MapCanvas = memo(function MapCanvas({
 
         <Geographies geography={GEO_URL}>
           {({ geographies, projection }: any) =>
-            geographies.map((geo: any) => (
-              <Geography
-                key={geo.rsmKey}
-                geography={geo}
-                onClick={(e: React.MouseEvent<SVGPathElement>) => {
-                  if (disabled) return;
-                  const { x, y } = toSVGCoords(
-                    e,
-                    e.currentTarget as SVGGraphicsElement
-                  );
-                  const coords = (projection as D3Projection).invert([x, y]);
-                  if (!coords) return;
-                  onClick({
-                    lng: +coords[0].toFixed(4),
-                    lat: +coords[1].toFixed(4),
-                    country: countriesByNumericCode.get(Number(geo.id)) ?? null,
-                  });
-                }}
-                style={{
-                  default: {
-                    fill: "#1a1a1a",
-                    stroke: "#2a2a2a",
-                    strokeWidth: 0.5,
-                    strokeOpacity: borderOpacity,
-                    outline: "none",
-                    transition: "stroke-opacity 1s ease",
-                  },
-                  hover: {
-                    fill: disabled ? "#1a1a1a" : "#2a2a2a",
-                    stroke: disabled ? "#2a2a2a" : "#333333",
-                    strokeWidth: 0.5,
-                    strokeOpacity: borderOpacity,
-                    outline: "none",
-                    transition: "stroke-opacity 1s ease",
-                  },
-                  pressed: {
-                    fill: "#1e2a1e",
-                    stroke: "#2a3a2a",
-                    strokeWidth: 0.75,
-                    strokeOpacity: borderOpacity,
-                    outline: "none",
-                    transition: "stroke-opacity 1s ease",
-                  },
-                }}
-              />
-            ))
+            geographies.map((geo: any) => {
+              const country = countriesByNumericCode.get(Number(geo.id));
+              const isTarget = hintSet && country && country.name === hintCountry;
+              const isNeighbor = hintSet && country && hintSet.has(country.name) && !isTarget;
+              const baseFill = isTarget ? "#1a2d1e" : isNeighbor ? "#1a2a1e" : "#1a1a1a";
+              const baseStroke = (isTarget || isNeighbor) ? "#2a3a2a" : "#2a2a2a";
+              return (
+                <Geography
+                  key={geo.rsmKey}
+                  geography={geo}
+                  onClick={(e: React.MouseEvent<SVGPathElement>) => {
+                    if (disabled) return;
+                    const { x, y } = toSVGCoords(
+                      e,
+                      e.currentTarget as SVGGraphicsElement
+                    );
+                    const coords = (projection as D3Projection).invert([x, y]);
+                    if (!coords) return;
+                    onClick({
+                      lng: +coords[0].toFixed(4),
+                      lat: +coords[1].toFixed(4),
+                      country: country ?? null,
+                    });
+                  }}
+                  style={{
+                    default: {
+                      fill: baseFill,
+                      stroke: baseStroke,
+                      strokeWidth: 0.5,
+                      strokeOpacity: borderOpacity,
+                      outline: "none",
+                      transition: "fill 500ms ease, stroke 500ms ease, stroke-opacity 1s ease",
+                    },
+                    hover: {
+                      fill: disabled ? baseFill : "#2a2a2a",
+                      stroke: disabled ? baseStroke : "#333333",
+                      strokeWidth: 0.5,
+                      strokeOpacity: borderOpacity,
+                      outline: "none",
+                      transition: "fill 200ms ease, stroke 200ms ease, stroke-opacity 1s ease",
+                    },
+                    pressed: {
+                      fill: "#1e2a1e",
+                      stroke: "#2a3a2a",
+                      strokeWidth: 0.75,
+                      strokeOpacity: borderOpacity,
+                      outline: "none",
+                      transition: "stroke-opacity 1s ease",
+                    },
+                  }}
+                />
+              );
+            })
           }
         </Geographies>
 
