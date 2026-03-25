@@ -70,12 +70,35 @@ export async function GET(req: Request) {
     // Approximate rounds from score: each correct ~500-1000 pts
     // We can't know exact rounds without storing them, so show game count + best score
 
-    // Collectibles
+    // Collectibles — backfill any mastered countries that are missing cards
     const { data: collectibles } = await supabaseAdmin
       .from("collectibles")
       .select("country, rarity, unlocked_at")
       .eq("user_id", userId)
       .order("unlocked_at", { ascending: false });
+
+    const unlockedSet = new Set((collectibles ?? []).map((c) => c.country));
+    const { countries: allCountries } = await import("@/data/countries");
+    const masteredMissing = (mastery ?? []).filter(
+      (m) => m.correct_count >= 3 && !unlockedSet.has(m.country)
+    );
+    if (masteredMissing.length > 0) {
+      const countryMap = new Map(allCountries.map((c) => [c.name, c]));
+      const rows = masteredMissing.map((m) => ({
+        user_id: userId,
+        country: m.country,
+        rarity: countryMap.get(m.country)?.rarity ?? "common",
+        unlocked_at: m.last_played ?? new Date().toISOString(),
+      }));
+      await supabaseAdmin.from("collectibles").upsert(rows, { onConflict: "user_id,country" });
+      // Re-fetch after backfill
+      const { data: updated } = await supabaseAdmin
+        .from("collectibles")
+        .select("country, rarity, unlocked_at")
+        .eq("user_id", userId)
+        .order("unlocked_at", { ascending: false });
+      if (updated) (collectibles as typeof updated).splice(0, collectibles!.length, ...updated);
+    }
 
     const result = {
       user,
