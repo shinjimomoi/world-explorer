@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import { useNavbar } from "@/app/context/navbar";
+import { countries } from "@/data/countries";
 import type { Difficulty } from "./types";
 import type { Category } from "@/data/categories";
 import { TOTAL_ROUNDS, SURVIVAL_LIVES } from "./types";
@@ -16,6 +18,7 @@ import RoundIntro from "./components/game/RoundIntro";
 import ResultPopup from "./components/game/ResultPopup";
 import EndScreen from "./components/game/EndScreen";
 import SurvivalGameOver from "./components/game/SurvivalGameOver";
+import CardUnlock from "./components/game/CardUnlock";
 
 export type { Difficulty };
 
@@ -28,6 +31,12 @@ export default function WorldMap({
 }) {
   const { isSignedIn, user: clerkUser } = useUser();
   const { setState: setNavbarState } = useNavbar();
+  const navRouter = useRouter();
+  const [unlockCountry, setUnlockCountry] = useState<string | null>(null);
+
+  const handleCardUnlock = useCallback((countryName: string) => {
+    setUnlockCountry(countryName);
+  }, []);
 
   // ── core game state ────────────────────────────────────────────────────
   const game = useGameState(difficulty, category);
@@ -75,6 +84,7 @@ export default function WorldMap({
     setLives: game.setLives,
     setGamePhase: game.setGamePhase,
     masteryBonusRef: game.masteryBonusRef,
+    onCardUnlock: handleCardUnlock,
   });
 
   // ── sync game state into navbar ────────────────────────────────────────
@@ -206,6 +216,21 @@ export default function WorldMap({
           onCancel={() => game.setShowQuitDialog(false)}
         />
       )}
+
+      {unlockCountry && (() => {
+        const c = countries.find((x) => x.name === unlockCountry);
+        if (!c) return null;
+        return (
+          <CardUnlock
+            country={c}
+            onContinue={() => setUnlockCountry(null)}
+            onViewCollection={() => {
+              setUnlockCountry(null);
+              navRouter.push("/profile#collection");
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }

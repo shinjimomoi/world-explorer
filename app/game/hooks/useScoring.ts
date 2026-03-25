@@ -19,6 +19,7 @@ interface UseScoreParams {
   bestStreak: number;
   totalScore: number;
   category: Category;
+  onCardUnlock?: (countryName: string) => void;
 }
 
 export function useScoring({
@@ -35,6 +36,7 @@ export function useScoring({
   bestStreak,
   totalScore,
   category,
+  onCardUnlock,
 }: UseScoreParams) {
   // ── survival: lose life on bad score ─────────────────────────────────────
   useEffect(() => {
@@ -66,11 +68,31 @@ export function useScoring({
     })
       .then((r) => r.json())
       .then((data) => {
-        if (data.newlyMastered)
+        if (data.newlyMastered) {
           (masteryBonusRef as React.MutableRefObject<number>).current += 50;
+          // Unlock collectible card
+          if (clerkUser) {
+            fetch("/api/collectibles", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId: clerkUser.id,
+                country: result.country.name,
+                rarity: result.country.rarity,
+              }),
+            })
+              .then((r) => r.json())
+              .then((cData) => {
+                if (!cData.alreadyUnlocked && onCardUnlock) {
+                  onCardUnlock(result.country.name);
+                }
+              })
+              .catch(() => {});
+          }
+        }
       })
       .catch(() => {});
-  }, [result, isSignedIn, clerkUser, masteryBonusRef]);
+  }, [result, isSignedIn, clerkUser, masteryBonusRef, onCardUnlock]);
 
   // ── sync game completion to Supabase (signed-in only) ──────────────────
   useEffect(() => {

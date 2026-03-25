@@ -11,7 +11,7 @@ import {
 } from "react-simple-maps";
 import { countries, countriesByNumericCode } from "@/data/countries";
 import { filterCountries } from "@/data/categories";
-import { Flame, Swords, Plus, Minus, RotateCcw, Play } from "lucide-react";
+import { Flame, Swords, Plus, Minus, RotateCcw, Play, Grid, Lock } from "lucide-react";
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
@@ -67,10 +67,17 @@ interface ScoreRow {
   created_at: string;
 }
 
+interface Collectible {
+  country: string;
+  rarity: string;
+  unlocked_at: string;
+}
+
 interface ProfileData {
   user: { id: string; name: string; email: string; avatar_url: string; xp: number; total_games: number; total_guesses: number; total_correct: number } | null;
   mastery: MasteryRow[];
   recentScores: ScoreRow[];
+  collectibles: Collectible[];
   bestStreak: number;
   totalGames: number;
   accuracy: number;
@@ -121,6 +128,9 @@ export default function ProfilePage() {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; m: MasteryRow | undefined; name: string; capital: string } | null>(null);
   const [mapCenter, setMapCenter] = useState<[number, number]>([0, 10]);
   const [mapZoom, setMapZoom] = useState(1);
+  const [profileTab, setProfileTab] = useState<"overview" | "collection">("overview");
+  const [rarityFilter, setRarityFilter] = useState<string>("all");
+  const [collectionSort, setCollectionSort] = useState<"recent" | "rarity" | "alpha">("recent");
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -223,6 +233,31 @@ export default function ProfilePage() {
           ))}
         </div>
 
+        {/* ── Tabs ──────────────────────────────────────────────────── */}
+        <div className="mb-6 flex gap-1 border-b border-border pb-px">
+          <button
+            onClick={() => setProfileTab("overview")}
+            className={`cursor-pointer px-3 py-2 text-xs font-medium transition-all duration-150 ${
+              profileTab === "overview" ? "border-b-2 border-accent text-foreground" : "text-foreground-muted hover:text-[#aaaaaa]"
+            }`}
+          >
+            Overview
+          </button>
+          <button
+            onClick={() => setProfileTab("collection")}
+            className={`cursor-pointer flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all duration-150 ${
+              profileTab === "collection" ? "border-b-2 border-accent text-foreground" : "text-foreground-muted hover:text-[#aaaaaa]"
+            }`}
+          >
+            <Grid className="h-3 w-3" strokeWidth={1.5} /> Collection
+            <span className="rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent">
+              {data.collectibles.length}
+            </span>
+          </button>
+        </div>
+
+        {profileTab === "overview" ? (
+        <>
         {/* ── Mastery Heatmap ──────────────────────────────────────── */}
         <div className="relative mb-4 overflow-hidden rounded-xl border border-border bg-[#0a0a0a]">
           <div style={{ height: 400 }}>
@@ -561,6 +596,143 @@ export default function ProfilePage() {
             </div>
           );
         })()}
+        </>
+        ) : (
+        /* ── Collection Tab ────────────────────────────────────────── */
+        <>
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-sm text-foreground">
+              <span className="font-bold text-accent">{data.collectibles.length}</span>
+              <span className="text-foreground-muted"> / {countries.length} cards collected</span>
+            </p>
+            <select
+              value={collectionSort}
+              onChange={(e) => setCollectionSort(e.target.value as "recent" | "rarity" | "alpha")}
+              className="cursor-pointer rounded-md border border-border bg-surface px-2 py-1 text-xs text-foreground-muted focus:border-accent focus:outline-none"
+            >
+              <option value="recent">Recently unlocked</option>
+              <option value="rarity">Rarity</option>
+              <option value="alpha">Alphabetical</option>
+            </select>
+          </div>
+
+          {/* Rarity filters */}
+          <div className="mb-4 flex gap-1.5">
+            {["all", "common", "uncommon", "rare", "legendary"].map((r) => (
+              <button
+                key={r}
+                onClick={() => setRarityFilter(r)}
+                className={`cursor-pointer rounded-full px-3 py-1 text-[11px] font-medium transition-all duration-150 ${
+                  rarityFilter === r
+                    ? "bg-accent/15 text-accent"
+                    : "bg-surface-elevated text-foreground-muted hover:text-foreground"
+                }`}
+              >
+                {r === "all" ? "All" : r.charAt(0).toUpperCase() + r.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {/* Cards grid */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            {(() => {
+              const unlockedSet = new Set(data.collectibles.map((c) => c.country));
+              const unlockMap = new Map(data.collectibles.map((c) => [c.country, c]));
+              const rarityOrder: Record<string, number> = { legendary: 0, rare: 1, uncommon: 2, common: 3 };
+
+              let allCards = countries.map((c) => ({
+                country: c,
+                unlocked: unlockedSet.has(c.name),
+                unlockedAt: unlockMap.get(c.name)?.unlocked_at,
+              }));
+
+              // Filter by rarity
+              if (rarityFilter !== "all") {
+                allCards = allCards.filter((c) => c.country.rarity === rarityFilter);
+              }
+
+              // Sort
+              if (collectionSort === "recent") {
+                allCards.sort((a, b) => {
+                  if (a.unlocked && !b.unlocked) return -1;
+                  if (!a.unlocked && b.unlocked) return 1;
+                  if (a.unlocked && b.unlocked) {
+                    return new Date(b.unlockedAt!).getTime() - new Date(a.unlockedAt!).getTime();
+                  }
+                  return 0;
+                });
+              } else if (collectionSort === "rarity") {
+                allCards.sort((a, b) => (rarityOrder[a.country.rarity] ?? 9) - (rarityOrder[b.country.rarity] ?? 9));
+              } else {
+                allCards.sort((a, b) => a.country.name.localeCompare(b.country.name));
+              }
+
+              const RARITY_BORDER: Record<string, string> = {
+                common: "#444444",
+                uncommon: "#4ade80",
+                rare: "#EF9F27",
+                legendary: "#7F77DD",
+              };
+              const RARITY_TEXT: Record<string, string> = {
+                common: "#888888",
+                uncommon: "#4ade80",
+                rare: "#EF9F27",
+                legendary: "#7F77DD",
+              };
+
+              return allCards.map(({ country: c, unlocked }) => {
+                const borderColor = RARITY_BORDER[c.rarity] ?? "#444";
+                const rarityColor = RARITY_TEXT[c.rarity] ?? "#888";
+
+                if (!unlocked) {
+                  return (
+                    <div
+                      key={c.code}
+                      className="flex flex-col items-center justify-center rounded-xl p-4"
+                      style={{ background: "#111111", border: `1px solid ${borderColor}30`, minHeight: 180, opacity: 0.4 }}
+                    >
+                      <Lock className="mb-2 h-6 w-6 text-[#333333]" strokeWidth={1.5} />
+                      <p className="text-center text-[11px] font-medium text-[#333333]">{c.name}</p>
+                      <p className="mt-1 text-[9px] font-semibold uppercase tracking-wider" style={{ color: `${rarityColor}60` }}>
+                        {c.rarity}
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div
+                    key={c.code}
+                    className="flex flex-col overflow-hidden rounded-xl"
+                    style={{ background: "#111111", border: `1.5px solid ${borderColor}`, minHeight: 180 }}
+                  >
+                    {/* Flag */}
+                    <div className="flex h-14 items-center justify-center bg-[#0a0a0a]">
+                      <img
+                        src={`https://flagcdn.com/w80/${c.code2}.png`}
+                        alt={c.name}
+                        className="h-8 w-auto object-contain"
+                      />
+                    </div>
+                    {/* Info */}
+                    <div className="flex flex-1 flex-col p-2.5">
+                      <p className="text-[13px] font-bold leading-tight text-foreground">{c.name}</p>
+                      <p className="mt-0.5 text-[10px] text-[#666666]">{c.capital}</p>
+                      <p className="mt-auto pt-1.5 text-[9px] italic leading-snug text-[#555555]">{c.funFact}</p>
+                    </div>
+                    {/* Rarity bar */}
+                    <div className="flex items-center justify-center py-1" style={{ background: `${borderColor}15` }}>
+                      <span className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: rarityColor }}>
+                        {c.rarity}
+                      </span>
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </>
+        )}
       </div>
     </div>
   );

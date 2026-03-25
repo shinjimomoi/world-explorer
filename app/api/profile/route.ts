@@ -70,6 +70,13 @@ export async function GET(req: Request) {
     // Approximate rounds from score: each correct ~500-1000 pts
     // We can't know exact rounds without storing them, so show game count + best score
 
+    // Collectibles
+    const { data: collectibles } = await supabaseAdmin
+      .from("collectibles")
+      .select("country, rarity, unlocked_at")
+      .eq("user_id", userId)
+      .order("unlocked_at", { ascending: false });
+
     const result = {
       user,
       mastery: mastery ?? [],
@@ -85,6 +92,7 @@ export async function GET(req: Request) {
         bestScore: survivalBestScore,
         bestStreak: survivalBestStreak,
       },
+      collectibles: collectibles ?? [],
     };
 
     console.log("[profile] Returning:", {
