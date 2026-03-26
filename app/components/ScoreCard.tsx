@@ -12,7 +12,7 @@ interface ScoreCardProps {
 const ScoreCard = React.forwardRef<HTMLDivElement, ScoreCardProps>(
   function ScoreCard({ totalScore, bestStreak, difficulty, category, rating, maxScore }, ref) {
     const pct = Math.min(100, Math.round((totalScore / maxScore) * 100));
-    const color = pct >= 80 ? "#4ade80" : pct >= 50 ? "#fbbf24" : "#f87171";
+    const color = pct >= 80 ? "#4ade80" : pct >= 50 ? "#fb923c" : "#f87171";
 
     return (
       <div

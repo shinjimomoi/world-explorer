@@ -7,7 +7,7 @@ const MAX_DISTANCE = 5000;
 
 function distanceColor(km: number): string {
   if (km <= 500) return "#4ade80";
-  if (km <= 1000) return "#EF9F27";
+  if (km <= 1000) return "#fb923c";
   return "#f87171";
 }
 

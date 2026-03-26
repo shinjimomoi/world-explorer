@@ -90,7 +90,7 @@ interface ProfileData {
 function masteryFill(m: MasteryRow | undefined): string {
   if (!m) return "#1a1a1a";
   if (m.correct_count >= 3) return "#4ade80";
-  if (m.correct_count >= 1) return "#854F0B";
+  if (m.correct_count >= 1) return "#fb923c";
   return "#2a2a2a";
 }
 
@@ -395,7 +395,7 @@ export default function ProfilePage() {
             <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#2a2a2a]" /> Seen: {seenCount}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#854F0B]" /> Learning: {learningCount}
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#fb923c]" /> Learning: {learningCount}
           </span>
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-2.5 w-2.5 rounded-full bg-accent" /> Mastered: {mastered}
@@ -442,8 +442,8 @@ export default function ProfilePage() {
                     bg = "bg-accent/15";
                     text = "text-accent";
                   } else if (m.correct_count >= 1) {
-                    bg = "bg-[#EF9F27]/15";
-                    text = "text-[#EF9F27]";
+                    bg = "bg-[#fb923c]/15";
+                    text = "text-[#fb923c]";
                   } else {
                     bg = "bg-[#333333]/50";
                     text = "text-[#888888]";
@@ -465,7 +465,7 @@ export default function ProfilePage() {
                 <span className="inline-block h-2 w-2 rounded-full bg-accent" /> Mastered (3+)
               </span>
               <span className="flex items-center gap-1">
-                <span className="inline-block h-2 w-2 rounded-full bg-[#EF9F27]" /> Learning (1-2)
+                <span className="inline-block h-2 w-2 rounded-full bg-[#fb923c]" /> Learning (1-2)
               </span>
               <span className="flex items-center gap-1">
                 <span className="inline-block h-2 w-2 rounded-full bg-[#888888]" /> Seen
@@ -670,13 +670,13 @@ export default function ProfilePage() {
               const RARITY_BORDER: Record<string, string> = {
                 common: "#444444",
                 uncommon: "#4ade80",
-                rare: "#EF9F27",
+                rare: "#fb923c",
                 legendary: "#7F77DD",
               };
               const RARITY_TEXT: Record<string, string> = {
                 common: "#888888",
                 uncommon: "#4ade80",
-                rare: "#EF9F27",
+                rare: "#fb923c",
                 legendary: "#7F77DD",
               };
 

@@ -55,7 +55,7 @@ export function streakMultiplier(streak: number): {
 /** green ≥800 · amber ≥500 · red <500 */
 export function ptColor(points: number): string {
   if (points >= 800) return "#4ade80";
-  if (points >= 500) return "#fbbf24";
+  if (points >= 500) return "#fb923c";
   return "#f87171";
 }
 

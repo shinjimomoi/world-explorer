@@ -122,7 +122,7 @@ export default function WorldMap({
       game.timerSecondsLeft > effectiveTimerSec * 0.5
         ? "#4ade80"
         : game.timerSecondsLeft > effectiveTimerSec * 0.25
-        ? "#fbbf24"
+        ? "#fb923c"
         : "#f87171";
     setNavbarState({
       active: true,

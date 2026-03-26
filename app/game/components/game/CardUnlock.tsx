@@ -8,7 +8,7 @@ import { Sparkles } from "lucide-react";
 const RARITY_COLORS: Record<string, { border: string; text: string; label: string }> = {
   common: { border: "#444444", text: "#888888", label: "Common" },
   uncommon: { border: "#4ade80", text: "#4ade80", label: "Uncommon" },
-  rare: { border: "#EF9F27", text: "#EF9F27", label: "Rare" },
+  rare: { border: "#fb923c", text: "#fb923c", label: "Rare" },
   legendary: { border: "#7F77DD", text: "#7F77DD", label: "Legendary" },
 };
 
