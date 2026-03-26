@@ -74,7 +74,7 @@ interface Collectible {
 }
 
 interface ProfileData {
-  user: { id: string; name: string; email: string; avatar_url: string; xp: number; total_games: number; total_guesses: number; total_correct: number } | null;
+  user: { id: string; name: string; email: string; avatar_url: string; xp: number; total_games: number; total_guesses: number; total_correct: number; daily_streak?: number } | null;
   mastery: MasteryRow[];
   recentScores: ScoreRow[];
   collectibles: Collectible[];
@@ -232,6 +232,19 @@ export default function ProfilePage() {
             </div>
           ))}
         </div>
+
+        {/* ── Daily Streak ────────────────────────────────────────────── */}
+        {(data.user?.daily_streak ?? 0) > 0 && (
+          <div className="mb-6 flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3">
+            <Flame className="h-5 w-5 text-accent" strokeWidth={1.5} />
+            <div>
+              <p className="text-sm font-bold text-foreground">
+                {data.user!.daily_streak} day streak
+              </p>
+              <p className="text-[11px] text-foreground-muted">Daily Challenge</p>
+            </div>
+          </div>
+        )}
 
         {/* ── Tabs ──────────────────────────────────────────────────── */}
         <div className="mb-6 flex gap-1 border-b border-border pb-px">

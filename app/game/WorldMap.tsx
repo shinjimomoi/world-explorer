@@ -141,6 +141,7 @@ export default function WorldMap({
       lives: game.isSurvival ? game.lives : undefined,
       maxLives: game.isSurvival ? SURVIVAL_LIVES : undefined,
       tier: game.isSurvival ? currentTier?.name : undefined,
+      isDaily: game.isDaily,
     });
   }, [
     game.gamePhase, game.currentCountry, hint, game.round, game.totalScore,

@@ -124,6 +124,11 @@ function GameNavbar({ s }: { s: GameNavState }) {
           </>
         ) : (
           <>
+            {s.isDaily && (
+              <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent">
+                DAILY
+              </span>
+            )}
             {s.streak >= 3 && (
               <span className="inline-flex items-center gap-0.5 font-semibold text-accent">
                 <Flame className="h-3 w-3" strokeWidth={1.5} />{s.streak}

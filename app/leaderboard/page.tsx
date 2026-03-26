@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { getTopScores, type LeaderboardEntry } from "@/lib/leaderboard";
 import { Flame } from "lucide-react";
 
-const TABS = ["All", "Africa", "Americas", "Asia", "Europe", "Oceania", "Microstates", "Survival"] as const;
+const TABS = ["All", "Africa", "Americas", "Asia", "Europe", "Oceania", "Microstates", "Survival", "Daily"] as const;
 
 export default function LeaderboardPage() {
   return (
@@ -28,7 +28,7 @@ function LeaderboardContent() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    getTopScores(tab === "All" ? undefined : tab)
+    getTopScores(tab === "All" ? undefined : tab === "Daily" ? "Daily Challenge" : tab)
       .then(setEntries)
       .catch(() => setError("Failed to load scores."))
       .finally(() => setLoading(false));

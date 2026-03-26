@@ -2,7 +2,7 @@ import type { Country } from "@/data/countries";
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
-export type Difficulty = "easy" | "hard" | "survival";
+export type Difficulty = "easy" | "hard" | "survival" | "daily";
 export type GamePhase = "playing" | "ended";
 
 export interface ClickInfo {

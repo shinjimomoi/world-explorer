@@ -23,10 +23,12 @@ import {
   TOTAL_ROUNDS,
 } from "../types";
 import { haversineKm, shuffled, streakMultiplier, survivalTier } from "../utils";
+import { getDailyCountries, getTodayDateStr } from "@/lib/dailyChallenge";
 
 export function useGameState(difficulty: Difficulty, category: Category) {
+  const isDaily = difficulty === "daily";
   const roundSeconds =
-    difficulty === "survival" ? 999 : difficulty === "hard" ? 15 : 30;
+    difficulty === "survival" ? 999 : (difficulty === "hard" || isDaily) ? 15 : 30;
   const router = useRouter();
   const [showQuitDialog, setShowQuitDialog] = useState(false);
   const masteryBonusRef = useRef(0);
@@ -40,9 +42,16 @@ export function useGameState(difficulty: Difficulty, category: Category) {
   const bestStreakRef = useRef(0);
 
   const pool = filterCountries(category);
+  const dailyPool = useRef(isDaily ? getDailyCountries(getTodayDateStr()) : []);
+  const dailyIndex = useRef(0);
   const usedCountriesRef = useRef(new Set<string>());
 
   function drawNext(): Country {
+    if (isDaily && dailyPool.current.length > 0) {
+      const pick = dailyPool.current[dailyIndex.current % dailyPool.current.length];
+      dailyIndex.current++;
+      return pick;
+    }
     if (difficulty === "survival") {
       const tier = survivalTier(roundRef.current);
       const tierPool = countriesByMaxRank(tier.maxRank).filter(
@@ -188,6 +197,8 @@ export function useGameState(difficulty: Difficulty, category: Category) {
     setIntroMessage(null);
     setLives(SURVIVAL_LIVES);
     usedCountriesRef.current = new Set();
+    dailyIndex.current = 0;
+    if (isDaily) dailyPool.current = getDailyCountries(getTodayDateStr());
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── stable click handler ──────────────────────────────────────────────────
@@ -232,6 +243,7 @@ export function useGameState(difficulty: Difficulty, category: Category) {
     lives,
     setLives,
     isSurvival,
+    isDaily,
     mapZoom,
     setMapZoom,
 

@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import DifficultyModal from "./components/DifficultyModal";
 import { useRouter } from "next/navigation";
 import type { Difficulty } from "./game/WorldMap";
 import type { Category } from "@/data/categories";
 import { useUser, SignInButton } from "@clerk/nextjs";
+import { Calendar, Clock, CheckCircle } from "lucide-react";
+import { getDailyNumber, getTimeUntilNextDaily } from "@/lib/dailyChallenge";
 
 const GEO_URL =
   "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
@@ -17,6 +19,82 @@ const TICKER_CITIES = [
   "Canberra", "Berlin", "Brasília", "Hanoi", "Accra",
   "Madrid", "Ankara", "Havana",
 ];
+
+function DailyCard() {
+  const router = useRouter();
+  const { isSignedIn, user } = useUser();
+  const [status, setStatus] = useState<{ played: boolean; score: number | null } | null>(null);
+  const [countdown, setCountdown] = useState(getTimeUntilNextDaily());
+  const dailyNum = getDailyNumber();
+
+  useEffect(() => {
+    // Check if already played
+    const guestId = typeof window !== "undefined" ? localStorage.getItem("world_explorer_guest_id") : null;
+    const userId = isSignedIn && user ? user.id : null;
+    if (!userId && !guestId) {
+      setStatus({ played: false, score: null });
+      return;
+    }
+    const params = userId ? `userId=${userId}` : `guestId=${guestId}`;
+    fetch(`/api/daily?${params}`)
+      .then((r) => r.json())
+      .then((d) => setStatus({ played: d.played, score: d.score }))
+      .catch(() => setStatus({ played: false, score: null }));
+  }, [isSignedIn, user]);
+
+  // Countdown timer
+  useEffect(() => {
+    const iv = setInterval(() => setCountdown(getTimeUntilNextDaily()), 60000);
+    return () => clearInterval(iv);
+  }, []);
+
+  function handlePlay() {
+    // Ensure guest ID exists
+    if (!isSignedIn) {
+      if (typeof window !== "undefined" && !localStorage.getItem("world_explorer_guest_id")) {
+        localStorage.setItem("world_explorer_guest_id", crypto.randomUUID());
+      }
+    }
+    router.push("/game?difficulty=daily");
+  }
+
+  return (
+    <div className="w-full max-w-sm rounded-xl border border-[#333333] bg-[#111111] p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <Calendar className="h-4 w-4 text-accent" strokeWidth={1.5} />
+          <div>
+            <p className="text-sm font-semibold text-foreground">Daily Challenge</p>
+            <p className="text-[11px] text-accent">Daily #{dailyNum}</p>
+          </div>
+        </div>
+        <div className="text-right">
+          {status?.played ? (
+            <div className="flex items-center gap-1.5">
+              <CheckCircle className="h-3.5 w-3.5 text-accent" strokeWidth={1.5} />
+              <span className="font-mono text-sm font-bold text-accent">
+                {(status.score ?? 0).toLocaleString()}
+              </span>
+            </div>
+          ) : (
+            <button
+              onClick={handlePlay}
+              className="cursor-pointer rounded-lg bg-[#f0f0f0] px-4 py-1.5 text-xs font-semibold text-[#0a0a0a] transition-all duration-150 hover:bg-[#e5e5e5] active:scale-[0.98]"
+            >
+              Play now
+            </button>
+          )}
+        </div>
+      </div>
+      {status?.played && (
+        <div className="mt-2 flex items-center gap-1.5 text-[11px] text-[#555555]">
+          <Clock className="h-3 w-3" strokeWidth={1.5} />
+          <span>Next challenge in {countdown.hours}h {countdown.minutes}m</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Home() {
   const router = useRouter();
@@ -111,6 +189,9 @@ export default function Home() {
             </SignInButton>
           </p>
         )}
+
+        {/* Daily Challenge card */}
+        <DailyCard />
       </div>
 
       {/* Bottom ticker */}

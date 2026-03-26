@@ -20,6 +20,8 @@ export interface GameNavState {
   lives?: number;
   maxLives?: number;
   tier?: string;
+  // Daily challenge
+  isDaily?: boolean;
 }
 
 export type NavbarState = GameNavState | { active: false };
