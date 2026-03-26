@@ -5,7 +5,19 @@ import { useSearchParams } from "next/navigation";
 import { getTopScores, type LeaderboardEntry } from "@/lib/leaderboard";
 import { Flame } from "lucide-react";
 
-const TABS = ["All", "Africa", "Americas", "Asia", "Europe", "Oceania", "Microstates", "Survival", "Daily"] as const;
+const MODES = ["Classic", "Survival", "Daily"] as const;
+const REGIONS = ["All", "Africa", "Americas", "Asia", "Europe", "Oceania", "Microstates"] as const;
+
+function resolveInitialMode(cat: string): (typeof MODES)[number] {
+  if (cat === "Survival") return "Survival";
+  if (cat === "Daily") return "Daily";
+  return "Classic";
+}
+
+function resolveInitialRegion(cat: string): string {
+  if (REGIONS.includes(cat as (typeof REGIONS)[number])) return cat;
+  return "All";
+}
 
 export default function LeaderboardPage() {
   return (
@@ -17,22 +29,28 @@ export default function LeaderboardPage() {
 
 function LeaderboardContent() {
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get("category") ?? "All";
-  const [tab, setTab] = useState(
-    TABS.includes(initialTab as (typeof TABS)[number]) ? initialTab : "All",
-  );
+  const initialCat = searchParams.get("category") ?? "All";
+  const [mode, setMode] = useState<(typeof MODES)[number]>(resolveInitialMode(initialCat));
+  const [region, setRegion] = useState(resolveInitialRegion(initialCat));
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Compute the actual filter value
+  const filterCategory =
+    mode === "Survival" ? "Survival"
+    : mode === "Daily" ? "Daily Challenge"
+    : region === "All" ? undefined
+    : region;
+
   useEffect(() => {
     setLoading(true);
     setError(null);
-    getTopScores(tab === "All" ? undefined : tab === "Daily" ? "Daily Challenge" : tab)
+    getTopScores(filterCategory)
       .then(setEntries)
       .catch(() => setError("Failed to load scores."))
       .finally(() => setLoading(false));
-  }, [tab]);
+  }, [filterCategory]);
 
   return (
     <div className="flex flex-1 flex-col items-center overflow-y-auto px-4 py-10">
@@ -44,22 +62,41 @@ function LeaderboardContent() {
           <h1 className="text-4xl font-bold text-foreground">Leaderboard</h1>
         </div>
 
-        {/* Tabs */}
-        <div className="mb-4 flex gap-1 overflow-x-auto border-b border-border pb-px">
-          {TABS.map((t) => (
+        {/* Level 1: Mode tabs */}
+        <div className="mb-3 flex gap-1 border-b border-border pb-px">
+          {MODES.map((m) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`shrink-0 cursor-pointer px-3 py-2 text-xs font-medium transition-all duration-150 ${
-                tab === t
+              key={m}
+              onClick={() => { setMode(m); if (m !== "Classic") setRegion("All"); }}
+              className={`cursor-pointer px-4 py-2 text-sm font-medium transition-all duration-150 ${
+                mode === m
                   ? "border-b-2 border-accent text-foreground"
                   : "text-foreground-muted hover:text-[#aaaaaa]"
               }`}
             >
-              {t === "All" ? "All" : t}
+              {m}
             </button>
           ))}
         </div>
+
+        {/* Level 2: Region pills (only for Classic) */}
+        {mode === "Classic" && (
+          <div className="mb-4 flex gap-1.5">
+            {REGIONS.map((r) => (
+              <button
+                key={r}
+                onClick={() => setRegion(r)}
+                className={`cursor-pointer rounded-full px-3 py-1 text-[11px] font-medium transition-all duration-150 ${
+                  region === r
+                    ? "bg-accent/15 text-accent"
+                    : "text-foreground-muted hover:text-foreground"
+                }`}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="overflow-hidden rounded-2xl border border-border bg-surface">
           {loading ? (
@@ -81,12 +118,12 @@ function LeaderboardContent() {
           ) : entries.length === 0 ? (
             <div className="px-6 py-12 text-center">
               <p className="text-foreground-muted">
-                {tab === "All"
+                {mode === "Classic" && region === "All"
                   ? "No scores yet. Play a game to get on the board!"
-                  : `No scores for ${tab} yet.`}
+                  : `No scores for ${mode === "Classic" ? region : mode} yet.`}
               </p>
               <a
-                href={tab === "All" ? "/game" : `/game?category=${tab}`}
+                href={mode === "Daily" ? "/game?difficulty=daily" : mode === "Survival" ? "/game?difficulty=survival" : region === "All" ? "/game" : `/game?category=${region}`}
                 className="mt-4 inline-block rounded-lg bg-[#f0f0f0] px-6 py-2.5 text-sm font-semibold text-[#0a0a0a] transition-all duration-150 hover:bg-[#e5e5e5] active:scale-[0.98]"
               >
                 Play Now
