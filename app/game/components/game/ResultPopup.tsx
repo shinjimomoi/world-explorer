@@ -121,6 +121,18 @@ export default function ResultPopup({
           </div>
         )}
 
+        {/* ── Fun fact ── */}
+        {result.country.funFact && (
+          <div className="mb-4 border-t border-[#222222] pt-3">
+            <p className="mb-1 text-[11px] font-medium uppercase text-[#555555]" style={{ letterSpacing: "0.1em" }}>
+              Did you know
+            </p>
+            <p className="text-[13px] italic text-[#888888]">
+              {result.country.funFact}
+            </p>
+          </div>
+        )}
+
         {/* ── Row 3: distance bar + next button ── */}
         <div className="flex items-center gap-4">
           {/* Distance scale bar */}
