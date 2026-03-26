@@ -18,6 +18,7 @@ export default function ResultPopup({
   countdown,
   onAdvance,
   isSurvival,
+  onDevUnlock,
 }: {
   result: GuessResult;
   round: number;
@@ -25,6 +26,7 @@ export default function ResultPopup({
   countdown: number;
   onAdvance: () => void;
   isSurvival?: boolean;
+  onDevUnlock?: () => void;
 }) {
   const isLastRound = !isSurvival && round >= TOTAL_ROUNDS;
   const color = ptColor(result.points);
@@ -143,6 +145,15 @@ export default function ResultPopup({
             </button>
           </div>
         </div>
+
+        {process.env.NODE_ENV === "development" && onDevUnlock && (
+          <button
+            onClick={onDevUnlock}
+            className="mt-2 text-[10px] text-[#333333] transition-colors hover:text-[#666666]"
+          >
+            Dev: trigger unlock
+          </button>
+        )}
 
         {/* Auto-advance progress bar */}
         <div className="mt-4 h-0.5 overflow-hidden rounded-full bg-[#1a1a1a]">

@@ -32,10 +32,13 @@ export default function WorldMap({
   const { isSignedIn, user: clerkUser } = useUser();
   const { setState: setNavbarState } = useNavbar();
   const navRouter = useRouter();
-  const [unlockCountry, setUnlockCountry] = useState<string | null>(null);
+
+  // Collect unlocked cards silently during game, show queue after game ends
+  const [pendingUnlocks, setPendingUnlocks] = useState<string[]>([]);
+  const [unlockQueue, setUnlockQueue] = useState<string[]>([]);
 
   const handleCardUnlock = useCallback((countryName: string) => {
-    setUnlockCountry(countryName);
+    setPendingUnlocks((prev) => [...prev, countryName]);
   }, []);
 
   // ── core game state ────────────────────────────────────────────────────
@@ -87,6 +90,28 @@ export default function WorldMap({
     onCardUnlock: handleCardUnlock,
   });
 
+  // ── dev cheat: Ctrl+Shift+M to simulate mastery unlock ─────────────────
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.ctrlKey && e.shiftKey && e.key === "M") {
+        const name = game.currentCountry.name;
+        setPendingUnlocks((prev) => prev.includes(name) ? prev : [...prev, name]);
+        console.log("[Dev] Simulated mastery unlock for:", name);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [game.currentCountry.name]);
+
+  // ── when game ends, move pending unlocks into the display queue ────────
+  useEffect(() => {
+    if (game.gamePhase === "ended" && pendingUnlocks.length > 0 && unlockQueue.length === 0) {
+      setUnlockQueue([...pendingUnlocks]);
+      setPendingUnlocks([]);
+    }
+  }, [game.gamePhase, pendingUnlocks, unlockQueue.length]);
+
   // ── sync game state into navbar ────────────────────────────────────────
   useEffect(() => {
     if (game.gamePhase !== "playing") return;
@@ -134,12 +159,39 @@ export default function WorldMap({
 
   // ── render ─────────────────────────────────────────────────────────────
 
+  // Show card unlock animations one at a time before end screen
+  if (game.gamePhase === "ended" && unlockQueue.length > 0) {
+    const countryName = unlockQueue[0];
+    const c = countries.find((x) => x.name === countryName);
+    if (c) {
+      return (
+        <CardUnlock
+          key={countryName}
+          country={c}
+          onContinue={() => setUnlockQueue((q) => q.slice(1))}
+          onViewCollection={() => {
+            setUnlockQueue([]);
+            navRouter.push("/profile#collection");
+          }}
+        />
+      );
+    }
+    // Country not found, skip it
+    setUnlockQueue((q) => q.slice(1));
+  }
+
+  // End screen (after all unlocks shown)
   if (game.gamePhase === "ended") {
     const uid = isSignedIn && clerkUser ? clerkUser.id : undefined;
     const uname = isSignedIn && clerkUser ? (clerkUser.fullName ?? clerkUser.username ?? "") : undefined;
     const playAgain = (d: Difficulty, c: Category) => {
-      if (d === difficulty && c === category) game.resetGame();
-      else game.router.push(`/game?difficulty=${d}&category=${c}`);
+      if (d === difficulty && c === category) {
+        setPendingUnlocks([]);
+        setUnlockQueue([]);
+        game.resetGame();
+      } else {
+        game.router.push(`/game?difficulty=${d}&category=${c}`);
+      }
     };
 
     if (game.isSurvival) {
@@ -207,6 +259,10 @@ export default function WorldMap({
           countdown={game.countdown}
           onAdvance={game.advance}
           isSurvival={game.isSurvival}
+          onDevUnlock={process.env.NODE_ENV === "development" ? () => {
+            const name = game.currentCountry.name;
+            setPendingUnlocks((prev) => prev.includes(name) ? prev : [...prev, name]);
+          } : undefined}
         />
       )}
 
@@ -216,21 +272,6 @@ export default function WorldMap({
           onCancel={() => game.setShowQuitDialog(false)}
         />
       )}
-
-      {unlockCountry && (() => {
-        const c = countries.find((x) => x.name === unlockCountry);
-        if (!c) return null;
-        return (
-          <CardUnlock
-            country={c}
-            onContinue={() => setUnlockCountry(null)}
-            onViewCollection={() => {
-              setUnlockCountry(null);
-              navRouter.push("/profile#collection");
-            }}
-          />
-        );
-      })()}
     </div>
   );
 }
