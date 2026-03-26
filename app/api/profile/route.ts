@@ -100,6 +100,44 @@ export async function GET(req: Request) {
       if (updated) (collectibles as typeof updated).splice(0, collectibles!.length, ...updated);
     }
 
+    // Daily challenge history (last 30 days)
+    const { data: dailyAttempts } = await supabaseAdmin
+      .from("daily_attempts")
+      .select("daily_date, completed")
+      .eq("user_id", userId)
+      .eq("completed", true)
+      .order("daily_date", { ascending: false });
+
+    const { data: dailyScores } = await supabaseAdmin
+      .from("scores")
+      .select("score, best_streak, created_at")
+      .eq("user_id", userId)
+      .eq("category", "Daily Challenge")
+      .order("created_at", { ascending: false });
+
+    // Build daily history with scores matched by date
+    const dailyScoreByDate = new Map<string, { score: number; bestStreak: number }>();
+    for (const s of dailyScores ?? []) {
+      const date = s.created_at?.slice(0, 10);
+      if (date && !dailyScoreByDate.has(date)) {
+        dailyScoreByDate.set(date, { score: s.score, bestStreak: s.best_streak });
+      }
+    }
+
+    const dailyHistory = (dailyAttempts ?? []).map((a) => {
+      const scoreData = dailyScoreByDate.get(a.daily_date);
+      return {
+        date: a.daily_date,
+        score: scoreData?.score ?? 0,
+        bestStreak: scoreData?.bestStreak ?? 0,
+      };
+    });
+
+    const dailyBestScore = dailyScores && dailyScores.length > 0
+      ? Math.max(...dailyScores.map((s) => s.score))
+      : 0;
+    const dailyDaysPlayed = dailyAttempts?.length ?? 0;
+
     const result = {
       user,
       mastery: mastery ?? [],
@@ -116,6 +154,12 @@ export async function GET(req: Request) {
         bestStreak: survivalBestStreak,
       },
       collectibles: collectibles ?? [],
+      daily: {
+        streak: user?.daily_streak ?? 0,
+        bestScore: dailyBestScore,
+        daysPlayed: dailyDaysPlayed,
+        history: dailyHistory.slice(0, 30),
+      },
     };
 
     console.log("[profile] Returning:", {

@@ -66,7 +66,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="h-dvh overflow-hidden flex flex-col bg-background text-foreground">
+      <body className="h-dvh overflow-hidden flex flex-col bg-background text-foreground" suppressHydrationWarning>
         <ClerkProvider>
           <SyncUser />
           <NavbarProvider>

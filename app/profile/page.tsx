@@ -11,7 +11,7 @@ import {
 } from "react-simple-maps";
 import { countries, countriesByNumericCode } from "@/data/countries";
 import { filterCountries } from "@/data/categories";
-import { Flame, Swords, Plus, Minus, RotateCcw, Play, Grid, Lock } from "lucide-react";
+import { Flame, Swords, Plus, Minus, RotateCcw, Play, Grid, Lock, Calendar, Trophy } from "lucide-react";
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
@@ -83,6 +83,12 @@ interface ProfileData {
   accuracy: number;
   masteredCount: number;
   survival: { games: number; bestScore: number; bestStreak: number };
+  daily: {
+    streak: number;
+    bestScore: number;
+    daysPlayed: number;
+    history: { date: string; score: number; bestStreak: number }[];
+  };
 }
 
 // ─── Mastery color helpers ───────────────────────────────────────────────────
@@ -484,6 +490,143 @@ export default function ProfilePage() {
                 <span className="inline-block h-2 w-2 rounded-full bg-[#888888]" /> Seen
               </span>
             </div>
+          )}
+        </div>
+
+        {/* ── Daily Challenge History ─────────────────────────────────── */}
+        <div className="mb-6 rounded-xl border border-border bg-surface p-4">
+          <div className="mb-4 flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-foreground-muted" strokeWidth={1.5} />
+            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
+              Daily Challenge
+            </p>
+          </div>
+
+          {data.daily.daysPlayed === 0 ? (
+            <div className="py-6 text-center">
+              <Calendar className="mx-auto mb-2 h-8 w-8 text-[#333333]" strokeWidth={1.5} />
+              <p className="text-sm text-foreground-muted">No daily challenges yet</p>
+              <p className="mt-1 text-xs text-[#555555]">Play today&apos;s challenge to start tracking</p>
+              <a
+                href="/game?difficulty=daily"
+                className="mt-3 inline-block cursor-pointer rounded-lg bg-[#f0f0f0] px-4 py-1.5 text-xs font-semibold text-[#0a0a0a] transition-all duration-150 hover:bg-[#e5e5e5] active:scale-[0.98]"
+              >
+                Play Daily Challenge
+              </a>
+            </div>
+          ) : (
+            <>
+              {/* Streak */}
+              <div className="mb-4">
+                {data.daily.streak > 0 ? (
+                  <div className="flex items-center gap-2">
+                    <Flame className="h-5 w-5 text-accent" strokeWidth={1.5} />
+                    <span className="font-mono text-lg font-bold text-foreground">{data.daily.streak}</span>
+                    <span className="text-sm text-foreground-muted">day streak</span>
+                  </div>
+                ) : (
+                  <p className="text-sm text-[#555555]">
+                    Play today&apos;s challenge to start a streak!
+                  </p>
+                )}
+              </div>
+
+              {/* Stats row */}
+              <div className="mb-4 grid grid-cols-3 overflow-hidden rounded-lg bg-[#222222]" style={{ gap: 1 }}>
+                <div className="bg-[#111111] px-3 py-2.5 text-center">
+                  <p className="text-[10px] font-medium uppercase text-[#444444]" style={{ letterSpacing: "0.08em" }}>Days</p>
+                  <p className="mt-0.5 font-mono text-lg font-bold text-foreground">{data.daily.daysPlayed}</p>
+                </div>
+                <div className="bg-[#111111] px-3 py-2.5 text-center">
+                  <p className="text-[10px] font-medium uppercase text-[#444444]" style={{ letterSpacing: "0.08em" }}>Best</p>
+                  <p className="mt-0.5 font-mono text-lg font-bold text-accent">{data.daily.bestScore.toLocaleString()}</p>
+                </div>
+                <div className="bg-[#111111] px-3 py-2.5 text-center">
+                  <p className="text-[10px] font-medium uppercase text-[#444444]" style={{ letterSpacing: "0.08em" }}>Streak</p>
+                  <p className="mt-0.5 font-mono text-lg font-bold text-foreground">{data.daily.streak}</p>
+                </div>
+              </div>
+
+              {/* Calendar heatmap (last 30 days) */}
+              {(() => {
+                const playedDates = new Set(data.daily.history.map((h) => h.date));
+                const scoreByDate = new Map(data.daily.history.map((h) => [h.date, h.score]));
+                const today = new Date().toISOString().slice(0, 10);
+                const days: { date: string; label: string }[] = [];
+                for (let i = 29; i >= 0; i--) {
+                  const d = new Date();
+                  d.setDate(d.getDate() - i);
+                  days.push({
+                    date: d.toISOString().slice(0, 10),
+                    label: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                  });
+                }
+                return (
+                  <div className="mb-4">
+                    <div className="flex flex-wrap gap-[3px]">
+                      {days.map((d) => {
+                        const played = playedDates.has(d.date);
+                        const score = scoreByDate.get(d.date);
+                        const isToday = d.date === today;
+                        let bg: string;
+                        if (played && score && score >= 8000) bg = "#4ade80";
+                        else if (played) bg = "rgba(74,222,128,0.4)";
+                        else if (isToday) bg = "#222222";
+                        else bg = "#1a1a1a";
+                        const border = isToday && !played ? "1px solid #333333" : "none";
+                        return (
+                          <div
+                            key={d.date}
+                            title={played ? `${d.label}: ${score?.toLocaleString()} pts` : d.label}
+                            className="rounded-[4px]"
+                            style={{ width: 28, height: 28, background: bg, border }}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="mt-2 flex gap-3 text-[10px] text-[#555555]">
+                      <span className="flex items-center gap-1">
+                        <span className="inline-block h-2 w-2 rounded-sm bg-[#1a1a1a]" /> Not played
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="inline-block h-2 w-2 rounded-sm" style={{ background: "rgba(74,222,128,0.4)" }} /> Played
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="inline-block h-2 w-2 rounded-sm bg-accent" /> Top score
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* History list */}
+              {data.daily.history.length > 0 && (
+                <div className="overflow-hidden rounded-lg border border-[#222222]">
+                  <div className="divide-y divide-[#1a1a1a]">
+                    {data.daily.history.slice(0, 10).map((h, i) => {
+                      const d = new Date(h.date + "T00:00:00");
+                      const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                      const correct = Math.max(0, Math.min(10, Math.round(h.score / 1000)));
+                      const isFullScore = correct === 10;
+                      return (
+                        <div key={h.date} className="flex items-center gap-3 px-3 py-2">
+                          <span className="w-16 shrink-0 text-xs text-foreground-muted">{dateStr}</span>
+                          <span className="flex-1 font-mono text-sm font-bold text-accent">
+                            {h.score.toLocaleString()}
+                          </span>
+                          <span className={`text-xs ${isFullScore ? "text-accent" : "text-foreground-muted"}`}>
+                            {correct}/10
+                          </span>
+                          {i === 0 && h.score === data.daily.bestScore && (
+                            <Trophy className="h-3 w-3 text-accent" strokeWidth={1.5} />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
