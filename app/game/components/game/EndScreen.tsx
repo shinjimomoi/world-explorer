@@ -189,7 +189,7 @@ export default function EndScreen({
                   Score saved!
                 </p>
                 <a
-                  href={`/leaderboard?category=${category === "All World" ? "All" : category}`}
+                  href={`/leaderboard?category=${difficulty === "daily" ? "Daily" : category === "All World" ? "All" : category}`}
                   className="text-xs text-accent transition-colors hover:text-accent-hover"
                 >
                   View leaderboard →

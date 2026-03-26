@@ -15,7 +15,7 @@ export async function GET(req: Request) {
 
   let query = supabaseAdmin
     .from("daily_attempts")
-    .select("score, best_streak, created_at")
+    .select("completed, created_at")
     .eq("daily_date", today);
 
   if (userId) query = query.eq("user_id", userId);
@@ -23,14 +23,29 @@ export async function GET(req: Request) {
 
   const { data } = await query.single();
 
+  // Also fetch the score from scores table if completed
+  let score: number | null = null;
+  if (data?.completed) {
+    let scoreQuery = supabaseAdmin
+      .from("scores")
+      .select("score")
+      .eq("category", "Daily Challenge")
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (userId) scoreQuery = scoreQuery.eq("user_id", userId);
+    const { data: scoreData } = await scoreQuery.single();
+    score = scoreData?.score ?? null;
+  }
+
   return NextResponse.json({
-    played: !!data,
-    score: data?.score ?? null,
-    bestStreak: data?.best_streak ?? null,
+    played: data?.completed === true,
+    started: !!data,
+    score,
   });
 }
 
-// POST: record daily attempt start or save score
+// POST: record daily attempt start or completion
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -38,12 +53,30 @@ export async function POST(req: Request) {
     const today = getTodayDateStr();
 
     if (action === "start") {
-      // Insert attempt row to lock the attempt
+      // Check if already exists
+      let checkQuery = supabaseAdmin
+        .from("daily_attempts")
+        .select("id, completed")
+        .eq("daily_date", today);
+
+      if (userId) checkQuery = checkQuery.eq("user_id", userId);
+      else checkQuery = checkQuery.eq("guest_id", guestId);
+
+      const { data: existing } = await checkQuery.single();
+
+      if (existing?.completed) {
+        return NextResponse.json({ ok: false, alreadyPlayed: true });
+      }
+
+      if (existing) {
+        // Started but not completed — allow replay
+        return NextResponse.json({ ok: true });
+      }
+
+      // Insert new attempt
       const row: Record<string, unknown> = {
         daily_date: today,
-        score: 0,
-        best_streak: 0,
-        name: name || "Player",
+        completed: false,
       };
       if (userId) row.user_id = userId;
       if (guestId) row.guest_id = guestId;
@@ -53,29 +86,32 @@ export async function POST(req: Request) {
         .insert(row);
 
       if (error) {
-        // Already played (unique constraint)
-        if (error.code === "23505") {
-          return NextResponse.json({ ok: false, alreadyPlayed: true });
-        }
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
       return NextResponse.json({ ok: true });
     }
 
     if (action === "complete") {
-      // Update the attempt with final score
-      let query = supabaseAdmin
+      // Mark attempt as completed
+      let updateQuery = supabaseAdmin
         .from("daily_attempts")
-        .update({ score, best_streak: bestStreak, name: name || "Player" })
+        .update({ completed: true })
         .eq("daily_date", today);
 
-      if (userId) query = query.eq("user_id", userId);
-      else query = query.eq("guest_id", guestId);
+      if (userId) updateQuery = updateQuery.eq("user_id", userId);
+      else updateQuery = updateQuery.eq("guest_id", guestId);
 
-      const { error } = await query;
-      if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-      }
+      await updateQuery;
+
+      // Save score to scores table
+      const scoreRow: Record<string, unknown> = {
+        name: name || "Player",
+        score,
+        best_streak: bestStreak,
+        category: "Daily Challenge",
+      };
+      if (userId) scoreRow.user_id = userId;
+      await supabaseAdmin.from("scores").insert(scoreRow);
 
       // Update daily streak for signed-in users
       if (userId) {
@@ -99,16 +135,6 @@ export async function POST(req: Request) {
           .update({ daily_streak: newStreak, last_daily_date: today })
           .eq("id", userId);
       }
-
-      // Also save to scores table for leaderboard
-      const scoreRow: Record<string, unknown> = {
-        name: name || "Player",
-        score,
-        best_streak: bestStreak,
-        category: "Daily Challenge",
-      };
-      if (userId) scoreRow.user_id = userId;
-      await supabaseAdmin.from("scores").insert(scoreRow);
 
       return NextResponse.json({ ok: true });
     }

@@ -32,6 +32,9 @@ export default function WorldMap({
   const { isSignedIn, user: clerkUser } = useUser();
   const { setState: setNavbarState } = useNavbar();
   const navRouter = useRouter();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   // Collect unlocked cards silently during game, show queue after game ends
   const [pendingUnlocks, setPendingUnlocks] = useState<string[]>([]);
@@ -158,7 +161,52 @@ export default function WorldMap({
     return () => setNavbarState({ active: false });
   }, [setNavbarState]);
 
+  // ── daily challenge: call start API on mount, complete API on game end ──
+  useEffect(() => {
+    if (!game.isDaily || !mounted) return;
+    const userId = isSignedIn && clerkUser ? clerkUser.id : null;
+    const guestId = typeof window !== "undefined" ? localStorage.getItem("world_explorer_guest_id") : null;
+    if (!userId && !guestId) return;
+    fetch("/api/daily", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "start", userId, guestId }),
+    }).catch(() => {});
+  }, [game.isDaily, mounted, isSignedIn, clerkUser]);
+
+  useEffect(() => {
+    if (game.gamePhase !== "ended" || !game.isDaily) return;
+    const userId = isSignedIn && clerkUser ? clerkUser.id : null;
+    const guestId = typeof window !== "undefined" ? localStorage.getItem("world_explorer_guest_id") : null;
+    const userName = isSignedIn && clerkUser ? (clerkUser.fullName ?? clerkUser.username ?? "") : undefined;
+    fetch("/api/daily", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "complete",
+        userId,
+        guestId,
+        score: game.totalScore,
+        bestStreak: game.bestStreak,
+        name: userName || "Player",
+      }),
+    }).catch(() => {});
+  }, [game.gamePhase, game.isDaily, game.totalScore, game.bestStreak, isSignedIn, clerkUser]);
+
   // ── render ─────────────────────────────────────────────────────────────
+
+  // Wait for client mount to avoid hydration mismatch from Math.random()
+  if (!mounted) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div
+          className="h-5 w-5 rounded-full border-2 border-[#333333] border-t-accent"
+          style={{ animation: "spin 0.6s linear infinite" }}
+        />
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      </div>
+    );
+  }
 
   // Show card unlock animations one at a time before end screen
   if (game.gamePhase === "ended" && unlockQueue.length > 0) {
