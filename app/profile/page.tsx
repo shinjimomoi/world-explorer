@@ -134,7 +134,7 @@ export default function ProfilePage() {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; m: MasteryRow | undefined; name: string; capital: string } | null>(null);
   const [mapCenter, setMapCenter] = useState<[number, number]>([0, 10]);
   const [mapZoom, setMapZoom] = useState(1);
-  const [profileTab, setProfileTab] = useState<"overview" | "collection">("overview");
+  const [profileTab, setProfileTab] = useState<"overview" | "collection" | "daily">("overview");
   const [rarityFilter, setRarityFilter] = useState<string>("all");
   const [collectionSort, setCollectionSort] = useState<"recent" | "rarity" | "alpha">("recent");
 
@@ -239,45 +239,42 @@ export default function ProfilePage() {
           ))}
         </div>
 
-        {/* ── Daily Streak ────────────────────────────────────────────── */}
-        {(data.user?.daily_streak ?? 0) > 0 && (
-          <div className="mb-6 flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3">
-            <Flame className="h-5 w-5 text-accent" strokeWidth={1.5} />
-            <div>
-              <p className="text-sm font-bold text-foreground">
-                {data.user!.daily_streak} day streak
-              </p>
-              <p className="text-[11px] text-foreground-muted">Daily Challenge</p>
-            </div>
-          </div>
-        )}
-
         {/* ── Tabs ──────────────────────────────────────────────────── */}
         <div className="mb-6 flex gap-1 border-b border-border pb-px">
-          <button
-            onClick={() => setProfileTab("overview")}
-            className={`cursor-pointer px-3 py-2 text-xs font-medium transition-all duration-150 ${
-              profileTab === "overview" ? "border-b-2 border-accent text-foreground" : "text-foreground-muted hover:text-[#aaaaaa]"
-            }`}
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => setProfileTab("collection")}
-            className={`cursor-pointer flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all duration-150 ${
-              profileTab === "collection" ? "border-b-2 border-accent text-foreground" : "text-foreground-muted hover:text-[#aaaaaa]"
-            }`}
-          >
-            <Grid className="h-3 w-3" strokeWidth={1.5} /> Collection
-            <span className="rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent">
-              {data.collectibles.length}
-            </span>
-          </button>
+          {(["overview", "collection", "daily"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setProfileTab(t)}
+              className={`cursor-pointer flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all duration-150 ${
+                profileTab === t ? "border-b-2 border-accent text-foreground" : "text-foreground-muted hover:text-[#aaaaaa]"
+              }`}
+            >
+              {t === "overview" && "Overview"}
+              {t === "collection" && (
+                <>
+                  <Grid className="h-3 w-3" strokeWidth={1.5} /> Collection
+                  <span className="rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent">
+                    {data.collectibles.length}
+                  </span>
+                </>
+              )}
+              {t === "daily" && (
+                <>
+                  <Calendar className="h-3 w-3" strokeWidth={1.5} /> Daily
+                  {(data.daily.streak > 0) && (
+                    <span className="inline-flex items-center gap-0.5 rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent">
+                      <Flame className="h-2.5 w-2.5" strokeWidth={1.5} />{data.daily.streak}
+                    </span>
+                  )}
+                </>
+              )}
+            </button>
+          ))}
         </div>
 
         {profileTab === "overview" ? (
         <>
-        {/* ── Mastery Heatmap ──────────────────────────────────────── */}
+        {/* ── Mastery Heatmap (Overview) ────────────────────────────── */}
         <div className="relative mb-4 overflow-hidden rounded-xl border border-border bg-[#0a0a0a]">
           <div style={{ height: 400 }}>
             <ComposableMap
@@ -493,268 +490,59 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* ── Daily Challenge History ─────────────────────────────────── */}
-        <div className="mb-6 rounded-xl border border-border bg-surface p-4">
-          <div className="mb-4 flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-foreground-muted" strokeWidth={1.5} />
-            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
-              Daily Challenge
-            </p>
-          </div>
-
-          {data.daily.daysPlayed === 0 ? (
-            <div className="py-6 text-center">
-              <Calendar className="mx-auto mb-2 h-8 w-8 text-[#333333]" strokeWidth={1.5} />
-              <p className="text-sm text-foreground-muted">No daily challenges yet</p>
-              <p className="mt-1 text-xs text-[#555555]">Play today&apos;s challenge to start tracking</p>
-              <a
-                href="/game?difficulty=daily"
-                className="mt-3 inline-block cursor-pointer rounded-lg bg-[#f0f0f0] px-4 py-1.5 text-xs font-semibold text-[#0a0a0a] transition-all duration-150 hover:bg-[#e5e5e5] active:scale-[0.98]"
-              >
-                Play Daily Challenge
-              </a>
-            </div>
-          ) : (
-            <>
-              {/* Streak */}
-              <div className="mb-4">
-                {data.daily.streak > 0 ? (
-                  <div className="flex items-center gap-2">
-                    <Flame className="h-5 w-5 text-accent" strokeWidth={1.5} />
-                    <span className="font-mono text-lg font-bold text-foreground">{data.daily.streak}</span>
-                    <span className="text-sm text-foreground-muted">day streak</span>
-                  </div>
-                ) : (
-                  <p className="text-sm text-[#555555]">
-                    Play today&apos;s challenge to start a streak!
-                  </p>
-                )}
-              </div>
-
-              {/* Stats row */}
-              <div className="mb-4 grid grid-cols-3 overflow-hidden rounded-lg bg-[#222222]" style={{ gap: 1 }}>
-                <div className="bg-[#111111] px-3 py-2.5 text-center">
-                  <p className="text-[10px] font-medium uppercase text-[#444444]" style={{ letterSpacing: "0.08em" }}>Days</p>
-                  <p className="mt-0.5 font-mono text-lg font-bold text-foreground">{data.daily.daysPlayed}</p>
-                </div>
-                <div className="bg-[#111111] px-3 py-2.5 text-center">
-                  <p className="text-[10px] font-medium uppercase text-[#444444]" style={{ letterSpacing: "0.08em" }}>Best</p>
-                  <p className="mt-0.5 font-mono text-lg font-bold text-accent">{data.daily.bestScore.toLocaleString()}</p>
-                </div>
-                <div className="bg-[#111111] px-3 py-2.5 text-center">
-                  <p className="text-[10px] font-medium uppercase text-[#444444]" style={{ letterSpacing: "0.08em" }}>Streak</p>
-                  <p className="mt-0.5 font-mono text-lg font-bold text-foreground">{data.daily.streak}</p>
-                </div>
-              </div>
-
-              {/* Calendar heatmap (last 30 days) */}
-              {(() => {
-                const playedDates = new Set(data.daily.history.map((h) => h.date));
-                const scoreByDate = new Map(data.daily.history.map((h) => [h.date, h.score]));
-                const today = new Date().toISOString().slice(0, 10);
-                const days: { date: string; label: string }[] = [];
-                for (let i = 29; i >= 0; i--) {
-                  const d = new Date();
-                  d.setDate(d.getDate() - i);
-                  days.push({
-                    date: d.toISOString().slice(0, 10),
-                    label: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-                  });
-                }
-                return (
-                  <div className="mb-4">
-                    <div className="flex flex-wrap gap-[3px]">
-                      {days.map((d) => {
-                        const played = playedDates.has(d.date);
-                        const score = scoreByDate.get(d.date);
-                        const isToday = d.date === today;
-                        let bg: string;
-                        if (played && score && score >= 8000) bg = "#4ade80";
-                        else if (played) bg = "rgba(74,222,128,0.4)";
-                        else if (isToday) bg = "#222222";
-                        else bg = "#1a1a1a";
-                        const border = isToday && !played ? "1px solid #333333" : "none";
-                        return (
-                          <div
-                            key={d.date}
-                            title={played ? `${d.label}: ${score?.toLocaleString()} pts` : d.label}
-                            className="rounded-[4px]"
-                            style={{ width: 28, height: 28, background: bg, border }}
-                          />
-                        );
-                      })}
-                    </div>
-                    <div className="mt-2 flex gap-3 text-[10px] text-[#555555]">
-                      <span className="flex items-center gap-1">
-                        <span className="inline-block h-2 w-2 rounded-sm bg-[#1a1a1a]" /> Not played
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="inline-block h-2 w-2 rounded-sm" style={{ background: "rgba(74,222,128,0.4)" }} /> Played
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="inline-block h-2 w-2 rounded-sm bg-accent" /> Top score
-                      </span>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* History list */}
-              {data.daily.history.length > 0 && (
-                <div className="overflow-hidden rounded-lg border border-[#222222]">
-                  <div className="divide-y divide-[#1a1a1a]">
-                    {data.daily.history.slice(0, 10).map((h, i) => {
-                      const d = new Date(h.date + "T00:00:00");
-                      const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-                      const correct = Math.max(0, Math.min(10, Math.round(h.score / 1000)));
-                      const isFullScore = correct === 10;
-                      return (
-                        <div key={h.date} className="flex items-center gap-3 px-3 py-2">
-                          <span className="w-16 shrink-0 text-xs text-foreground-muted">{dateStr}</span>
-                          <span className="flex-1 font-mono text-sm font-bold text-accent">
-                            {h.score.toLocaleString()}
-                          </span>
-                          <span className={`text-xs ${isFullScore ? "text-accent" : "text-foreground-muted"}`}>
-                            {correct}/10
-                          </span>
-                          {i === 0 && h.score === data.daily.bestScore && (
-                            <Trophy className="h-3 w-3 text-accent" strokeWidth={1.5} />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* ── Recent Games ─────────────────────────────────────────── */}
+        {/* ── Recent Games (Overview) ─────────────────────────────────── */}
         {data.recentScores.length > 0 && (
           <div className="mb-6 rounded-xl border border-border bg-surface overflow-hidden">
             <div className="border-b border-border px-4 py-3">
-              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
-                Recent Games
-              </p>
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">Recent Games</p>
             </div>
             <div className="divide-y divide-[#1a1a1a]">
               {data.recentScores.map((s, i) => (
                 <div key={i} className="flex items-center gap-3 px-4 py-2.5">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-foreground">
-                        {s.category || "All World"}
-                      </span>
-                      {s.difficulty && (
-                        <span className="rounded-full bg-surface-elevated px-2 py-0.5 text-[10px] font-medium text-foreground-muted">
-                          {s.difficulty}
-                        </span>
-                      )}
-                    </div>
+                    <span className="text-sm font-semibold text-foreground">{s.category || "All World"}</span>
                     <p className="text-xs text-foreground-muted">{formatDate(s.created_at)}</p>
                   </div>
-                  <span className="shrink-0 font-mono text-sm font-bold text-accent">
-                    {s.score.toLocaleString()}
-                  </span>
+                  <span className="shrink-0 font-mono text-sm font-bold text-accent">{s.score.toLocaleString()}</span>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* ── Survival Stats ────────────────────────────────────────── */}
+        {/* ── Survival slim row (Overview) ─────────────────────────────── */}
         {(() => {
           const sv = data.survival;
-          // Estimate best run from best streak (proxy until rounds_survived is stored)
-          const bestRun = sv.bestStreak > 0 ? sv.bestStreak + 2 : 0;
-          const furthestTier = bestRun >= 21 ? "hard" : bestRun >= 11 ? "medium" : bestRun > 0 ? "easy" : "none";
-
-          const tiers: { id: string; label: string; rounds: string }[] = [
-            { id: "easy", label: "Easy", rounds: "Rounds 1–10" },
-            { id: "medium", label: "Medium", rounds: "Rounds 11–20" },
-            { id: "hard", label: "Hard", rounds: "Rounds 21+" },
-          ];
-
-          function tierStyle(id: string) {
-            if (furthestTier === "none") return { bg: "#111111", border: "#222222", label: "#333333", rounds: "#2a2a2a" };
-            const reached = (id === "easy") || (id === "medium" && (furthestTier === "medium" || furthestTier === "hard")) || (id === "hard" && furthestTier === "hard");
-            const isFurthest = id === furthestTier;
-            if (isFurthest) return { bg: "#0f200f", border: "#4ade80", label: "#4ade80", rounds: "#4ade80" };
-            if (reached) return { bg: "#0f1a0f", border: "#2a3a2a", label: "#4ade80", rounds: "#2a5a2a" };
-            return { bg: "#111111", border: "#222222", label: "#333333", rounds: "#2a2a2a" };
-          }
-
+          const furthestTier = sv.bestStreak >= 19 ? "Hard" : sv.bestStreak >= 9 ? "Medium" : sv.games > 0 ? "Easy" : "—";
           return (
-            <div className="mb-6 flex flex-col gap-4 rounded-xl border border-[#222222] bg-[#111111] p-5">
-              {/* Header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Swords className="h-3.5 w-3.5 text-[#555555]" strokeWidth={1.5} />
-                  <span className="text-[11px] font-medium uppercase text-[#555555]" style={{ letterSpacing: "0.1em" }}>
-                    Survival Mode
-                  </span>
-                </div>
-                {bestRun > 0 && (
-                  <span className="text-[12px] text-[#555555]">
-                    Best run: <span className="font-semibold text-accent">{bestRun}</span> rounds
-                  </span>
+            <div className="mb-6 flex items-center justify-between border-t border-border pt-4">
+              <div className="flex items-center gap-2 text-sm text-foreground-muted">
+                <Swords className="h-3.5 w-3.5" strokeWidth={1.5} />
+                <span>Survival</span>
+                <span className="text-[#444444]">·</span>
+                <span>{sv.games} games</span>
+                {sv.bestScore > 0 && (
+                  <>
+                    <span className="text-[#444444]">·</span>
+                    <span>Best: <span className="font-mono font-semibold text-accent">{sv.bestScore.toLocaleString()}</span></span>
+                    <span className="text-[#444444]">·</span>
+                    <span>Furthest: {furthestTier}</span>
+                  </>
                 )}
               </div>
-
-              {/* Stats row */}
-              <div className="grid grid-cols-3 overflow-hidden rounded-lg bg-[#222222]" style={{ gap: 1 }}>
-                <div className="bg-[#111111] px-3 py-3 text-center">
-                  <p className="text-[11px] font-medium uppercase text-[#444444]" style={{ letterSpacing: "0.08em" }}>Games</p>
-                  <p className="mt-1 font-mono text-xl font-bold text-foreground">{sv.games}</p>
-                </div>
-                <div className="bg-[#111111] px-3 py-3 text-center">
-                  <p className="text-[11px] font-medium uppercase text-[#444444]" style={{ letterSpacing: "0.08em" }}>Best Score</p>
-                  <p className="mt-1 font-mono text-xl font-bold text-accent">{sv.bestScore.toLocaleString()}</p>
-                </div>
-                <div className="bg-[#111111] px-3 py-3 text-center">
-                  <p className="text-[11px] font-medium uppercase text-[#444444]" style={{ letterSpacing: "0.08em" }}>Best Streak</p>
-                  <p className="mt-1 font-mono text-xl font-bold text-foreground">
-                    <span className="inline-flex items-center justify-center gap-1">
-                      <Flame className="h-4 w-4 text-accent" strokeWidth={1.5} />{sv.bestStreak}
-                    </span>
-                  </p>
-                </div>
-              </div>
-
-              {/* Tier progression */}
-              <div className="grid grid-cols-3 gap-2">
-                {tiers.map((t) => {
-                  const s = tierStyle(t.id);
-                  const isFurthest = t.id === furthestTier;
-                  return (
-                    <div
-                      key={t.id}
-                      className="rounded-lg px-3 py-2 text-center"
-                      style={{ background: s.bg, border: `1px solid ${s.border}` }}
-                    >
-                      <p className="text-[12px] font-semibold" style={{ color: s.label }}>
-                        {isFurthest && "← "}{t.label}
-                      </p>
-                      <p className="mt-0.5 text-[10px]" style={{ color: s.rounds }}>{t.rounds}</p>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Play button */}
               <a
                 href="/game?difficulty=survival&category=All%20World"
-                className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#333333] py-2.5 text-sm font-semibold text-foreground transition-all duration-150 hover:bg-[#1a1a1a] hover:border-[#444444] active:scale-[0.98]"
+                className="cursor-pointer rounded-lg border border-[#333333] px-3 py-1.5 text-xs font-semibold text-foreground transition-all duration-150 hover:bg-[#1a1a1a] hover:border-[#444444] active:scale-[0.98]"
               >
-                <Play className="h-3.5 w-3.5" strokeWidth={1.5} /> Play survival
+                <Play className="mr-1 inline h-3 w-3" strokeWidth={1.5} />Play
               </a>
             </div>
           );
         })()}
         </>
-        ) : (
-        /* ── Collection Tab ────────────────────────────────────────── */
+
+        ) : profileTab === "collection" ? (
+        /* ── COLLECTION TAB ──────────────────────────────────────────── */
         <>
           <div className="mb-4 flex items-center justify-between">
             <p className="text-sm text-foreground">
@@ -771,116 +559,52 @@ export default function ProfilePage() {
               <option value="alpha">Alphabetical</option>
             </select>
           </div>
-
-          {/* Rarity filters */}
           <div className="mb-4 flex gap-1.5">
             {["all", "common", "uncommon", "rare", "legendary"].map((r) => (
               <button
                 key={r}
                 onClick={() => setRarityFilter(r)}
                 className={`cursor-pointer rounded-full px-3 py-1 text-[11px] font-medium transition-all duration-150 ${
-                  rarityFilter === r
-                    ? "bg-accent/15 text-accent"
-                    : "bg-surface-elevated text-foreground-muted hover:text-foreground"
+                  rarityFilter === r ? "bg-accent/15 text-accent" : "bg-surface-elevated text-foreground-muted hover:text-foreground"
                 }`}
               >
                 {r === "all" ? "All" : r.charAt(0).toUpperCase() + r.slice(1)}
               </button>
             ))}
           </div>
-
-          {/* Cards grid */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {(() => {
               const unlockedSet = new Set(data.collectibles.map((c) => c.country));
               const unlockMap = new Map(data.collectibles.map((c) => [c.country, c]));
               const rarityOrder: Record<string, number> = { legendary: 0, rare: 1, uncommon: 2, common: 3 };
-
-              let allCards = countries.map((c) => ({
-                country: c,
-                unlocked: unlockedSet.has(c.name),
-                unlockedAt: unlockMap.get(c.name)?.unlocked_at,
-              }));
-
-              // Filter by rarity
-              if (rarityFilter !== "all") {
-                allCards = allCards.filter((c) => c.country.rarity === rarityFilter);
-              }
-
-              // Sort
-              if (collectionSort === "recent") {
-                allCards.sort((a, b) => {
-                  if (a.unlocked && !b.unlocked) return -1;
-                  if (!a.unlocked && b.unlocked) return 1;
-                  if (a.unlocked && b.unlocked) {
-                    return new Date(b.unlockedAt!).getTime() - new Date(a.unlockedAt!).getTime();
-                  }
-                  return 0;
-                });
-              } else if (collectionSort === "rarity") {
-                allCards.sort((a, b) => (rarityOrder[a.country.rarity] ?? 9) - (rarityOrder[b.country.rarity] ?? 9));
-              } else {
-                allCards.sort((a, b) => a.country.name.localeCompare(b.country.name));
-              }
-
-              const RARITY_BORDER: Record<string, string> = {
-                common: "#444444",
-                uncommon: "#4ade80",
-                rare: "#fb923c",
-                legendary: "#7F77DD",
-              };
-              const RARITY_TEXT: Record<string, string> = {
-                common: "#888888",
-                uncommon: "#4ade80",
-                rare: "#fb923c",
-                legendary: "#7F77DD",
-              };
-
+              let allCards = countries.map((c) => ({ country: c, unlocked: unlockedSet.has(c.name), unlockedAt: unlockMap.get(c.name)?.unlocked_at }));
+              if (rarityFilter !== "all") allCards = allCards.filter((c) => c.country.rarity === rarityFilter);
+              if (collectionSort === "recent") allCards.sort((a, b) => { if (a.unlocked && !b.unlocked) return -1; if (!a.unlocked && b.unlocked) return 1; if (a.unlocked && b.unlocked) return new Date(b.unlockedAt!).getTime() - new Date(a.unlockedAt!).getTime(); return 0; });
+              else if (collectionSort === "rarity") allCards.sort((a, b) => (rarityOrder[a.country.rarity] ?? 9) - (rarityOrder[b.country.rarity] ?? 9));
+              else allCards.sort((a, b) => a.country.name.localeCompare(b.country.name));
+              const RB: Record<string, string> = { common: "#444444", uncommon: "#4ade80", rare: "#fb923c", legendary: "#7F77DD" };
+              const RT: Record<string, string> = { common: "#888888", uncommon: "#4ade80", rare: "#fb923c", legendary: "#7F77DD" };
               return allCards.map(({ country: c, unlocked }) => {
-                const borderColor = RARITY_BORDER[c.rarity] ?? "#444";
-                const rarityColor = RARITY_TEXT[c.rarity] ?? "#888";
-
-                if (!unlocked) {
-                  return (
-                    <div
-                      key={c.code}
-                      className="flex flex-col items-center justify-center rounded-xl p-4"
-                      style={{ background: "#111111", border: `1px solid ${borderColor}30`, minHeight: 180, opacity: 0.4 }}
-                    >
-                      <Lock className="mb-2 h-6 w-6 text-[#333333]" strokeWidth={1.5} />
-                      <p className="text-center text-[11px] font-medium text-[#333333]">{c.name}</p>
-                      <p className="mt-1 text-[9px] font-semibold uppercase tracking-wider" style={{ color: `${rarityColor}60` }}>
-                        {c.rarity}
-                      </p>
-                    </div>
-                  );
-                }
-
+                const bc = RB[c.rarity] ?? "#444"; const rc = RT[c.rarity] ?? "#888";
+                if (!unlocked) return (
+                  <div key={c.code} className="flex flex-col items-center justify-center rounded-xl p-4" style={{ background: "#111111", border: `1px solid ${bc}30`, minHeight: 180, opacity: 0.4 }}>
+                    <Lock className="mb-2 h-6 w-6 text-[#333333]" strokeWidth={1.5} />
+                    <p className="text-center text-[11px] font-medium text-[#333333]">{c.name}</p>
+                    <p className="mt-1 text-[9px] font-semibold uppercase tracking-wider" style={{ color: `${rc}60` }}>{c.rarity}</p>
+                  </div>
+                );
                 return (
-                  <div
-                    key={c.code}
-                    className="flex flex-col overflow-hidden rounded-xl"
-                    style={{ background: "#111111", border: `1.5px solid ${borderColor}`, minHeight: 180 }}
-                  >
-                    {/* Flag */}
+                  <div key={c.code} className="flex flex-col overflow-hidden rounded-xl" style={{ background: "#111111", border: `1.5px solid ${bc}`, minHeight: 180 }}>
                     <div className="flex h-14 items-center justify-center bg-[#0a0a0a]">
-                      <img
-                        src={`https://flagcdn.com/w80/${c.code2}.png`}
-                        alt={c.name}
-                        className="h-8 w-auto object-contain"
-                      />
+                      <img src={`https://flagcdn.com/w80/${c.code2}.png`} alt={c.name} className="h-8 w-auto object-contain" />
                     </div>
-                    {/* Info */}
                     <div className="flex flex-1 flex-col p-2.5">
                       <p className="text-[13px] font-bold leading-tight text-foreground">{c.name}</p>
                       <p className="mt-0.5 text-[10px] text-[#666666]">{c.capital}</p>
                       <p className="mt-auto pt-1.5 text-[9px] italic leading-snug text-[#555555]">{c.funFact}</p>
                     </div>
-                    {/* Rarity bar */}
-                    <div className="flex items-center justify-center py-1" style={{ background: `${borderColor}15` }}>
-                      <span className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: rarityColor }}>
-                        {c.rarity}
-                      </span>
+                    <div className="flex items-center justify-center py-1" style={{ background: `${bc}15` }}>
+                      <span className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: rc }}>{c.rarity}</span>
                     </div>
                   </div>
                 );
@@ -888,8 +612,112 @@ export default function ProfilePage() {
             })()}
           </div>
         </>
+
+        ) : (
+        /* ── DAILY TAB ───────────────────────────────────────────────── */
+        <>
+          {data.daily.daysPlayed === 0 ? (
+            <div className="py-10 text-center">
+              <Calendar className="mx-auto mb-3 h-8 w-8 text-[#333333]" strokeWidth={1.5} />
+              <p className="text-sm text-foreground-muted">No daily challenges yet</p>
+              <p className="mt-1 text-xs text-[#555555]">Play today&apos;s challenge to start tracking</p>
+              <a href="/game?difficulty=daily" className="mt-3 inline-block cursor-pointer rounded-lg bg-accent px-5 py-2 text-xs font-semibold text-[#0a0a0a] transition-all duration-150 hover:bg-accent-hover active:scale-[0.98]">
+                Play today&apos;s challenge →
+              </a>
+            </div>
+          ) : (
+            <>
+              {/* Daily streak */}
+              <div className="mb-4">
+                {data.daily.streak > 0 ? (
+                  <div className="flex items-center gap-2">
+                    <Flame className="h-5 w-5 text-accent" strokeWidth={1.5} />
+                    <span className="font-mono text-xl font-bold text-foreground">{data.daily.streak}</span>
+                    <span className="text-sm text-foreground-muted">day streak</span>
+                  </div>
+                ) : (
+                  <a href="/game?difficulty=daily" className="inline-block cursor-pointer rounded-lg bg-accent px-5 py-2 text-xs font-semibold text-[#0a0a0a] transition-all duration-150 hover:bg-accent-hover active:scale-[0.98]">
+                    Play today&apos;s challenge →
+                  </a>
+                )}
+              </div>
+
+              {/* Stats */}
+              <div className="mb-4 grid grid-cols-3 overflow-hidden rounded-lg bg-[#222222]" style={{ gap: 1 }}>
+                <div className="bg-[#111111] px-3 py-2.5 text-center">
+                  <p className="text-[10px] font-medium uppercase text-[#444444]" style={{ letterSpacing: "0.08em" }}>Days</p>
+                  <p className="mt-0.5 font-mono text-lg font-bold text-foreground">{data.daily.daysPlayed}</p>
+                </div>
+                <div className="bg-[#111111] px-3 py-2.5 text-center">
+                  <p className="text-[10px] font-medium uppercase text-[#444444]" style={{ letterSpacing: "0.08em" }}>Best</p>
+                  <p className="mt-0.5 font-mono text-lg font-bold text-accent">{data.daily.bestScore.toLocaleString()}</p>
+                </div>
+                <div className="bg-[#111111] px-3 py-2.5 text-center">
+                  <p className="text-[10px] font-medium uppercase text-[#444444]" style={{ letterSpacing: "0.08em" }}>Streak</p>
+                  <p className="mt-0.5 font-mono text-lg font-bold text-foreground">{data.daily.streak}</p>
+                </div>
+              </div>
+
+              {/* Calendar heatmap */}
+              {(() => {
+                const playedDates = new Set(data.daily.history.map((h) => h.date));
+                const scoreByDate = new Map(data.daily.history.map((h) => [h.date, h.score]));
+                const today = new Date().toISOString().slice(0, 10);
+                const days: { date: string; label: string }[] = [];
+                for (let i = 29; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); days.push({ date: d.toISOString().slice(0, 10), label: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) }); }
+                return (
+                  <div className="mb-4">
+                    <div className="flex flex-wrap gap-[3px]">
+                      {days.map((d) => {
+                        const played = playedDates.has(d.date);
+                        const score = scoreByDate.get(d.date);
+                        const isToday = d.date === today;
+                        let bg: string;
+                        if (played && score && score >= 8000) bg = "#4ade80";
+                        else if (played) bg = "rgba(74,222,128,0.4)";
+                        else if (isToday) bg = "#222222";
+                        else bg = "#1a1a1a";
+                        const border = isToday ? "1px solid #f0f0f0" : "none";
+                        return (
+                          <div key={d.date} title={played ? `${d.label}: ${score?.toLocaleString()} pts` : d.label} className="rounded-[4px]" style={{ width: 32, height: 32, background: bg, border }} />
+                        );
+                      })}
+                    </div>
+                    <div className="mt-2 flex gap-3 text-[10px] text-[#555555]">
+                      <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-[#1a1a1a]" /> Not played</span>
+                      <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm" style={{ background: "rgba(74,222,128,0.4)" }} /> Played</span>
+                      <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-accent" /> Top score</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* History list */}
+              {data.daily.history.length > 0 && (
+                <div className="overflow-hidden rounded-lg border border-[#222222]">
+                  <div className="divide-y divide-[#1a1a1a]">
+                    {data.daily.history.slice(0, 10).map((h) => {
+                      const d = new Date(h.date + "T00:00:00");
+                      const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                      const correct = Math.max(0, Math.min(10, Math.round(h.score / 1000)));
+                      return (
+                        <div key={h.date} className="flex items-center gap-3 px-3 py-2.5">
+                          <span className="w-16 shrink-0 text-xs text-foreground-muted">{dateStr}</span>
+                          <span className="flex-1 font-mono text-sm font-bold text-accent">{h.score.toLocaleString()}</span>
+                          <span className={`text-xs ${correct === 10 ? "text-accent" : "text-foreground-muted"}`}>{correct}/10</span>
+                          {h.score === data.daily.bestScore && <Trophy className="h-3 w-3 text-accent" strokeWidth={1.5} />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </>
         )}
       </div>
     </div>
   );
 }
+
