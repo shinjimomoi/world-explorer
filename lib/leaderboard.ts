@@ -6,6 +6,7 @@ export interface LeaderboardEntry {
   bestStreak: number;
   category: string;
   date: string;
+  userId?: string;
 }
 
 export async function saveScore(
@@ -28,7 +29,7 @@ export async function getTopScores(
 ): Promise<LeaderboardEntry[]> {
   let query = supabase
     .from("scores")
-    .select("name, score, best_streak, category, created_at")
+    .select("name, score, best_streak, category, created_at, user_id")
     .order("score", { ascending: false })
     .limit(10);
   if (category && category !== "All") {
@@ -42,5 +43,30 @@ export async function getTopScores(
     bestStreak: row.best_streak,
     category: row.category ?? "All World",
     date: row.created_at,
+    userId: row.user_id ?? undefined,
+  }));
+}
+
+export async function getDailyScores(
+  dateStr: string,
+): Promise<LeaderboardEntry[]> {
+  const startOfDay = `${dateStr}T00:00:00.000Z`;
+  const endOfDay = `${dateStr}T23:59:59.999Z`;
+  const { data, error } = await supabase
+    .from("scores")
+    .select("name, score, best_streak, category, created_at, user_id")
+    .eq("category", "Daily Challenge")
+    .gte("created_at", startOfDay)
+    .lte("created_at", endOfDay)
+    .order("score", { ascending: false })
+    .limit(10);
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    name: row.name,
+    score: row.score,
+    bestStreak: row.best_streak,
+    category: row.category ?? "Daily Challenge",
+    date: row.created_at,
+    userId: row.user_id ?? undefined,
   }));
 }

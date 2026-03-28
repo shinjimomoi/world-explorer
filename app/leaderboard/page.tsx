@@ -2,7 +2,8 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { getTopScores, type LeaderboardEntry } from "@/lib/leaderboard";
+import { getTopScores, getDailyScores, type LeaderboardEntry } from "@/lib/leaderboard";
+import { useUser } from "@clerk/nextjs";
 import { Flame } from "lucide-react";
 
 const MODES = ["Classic", "Survival", "Daily"] as const;
@@ -27,14 +28,32 @@ export default function LeaderboardPage() {
   );
 }
 
+function getLast7Days(): { date: string; label: string }[] {
+  const days: { date: string; label: string }[] = [];
+  const today = new Date().toISOString().slice(0, 10);
+  for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    days.push({
+      date: dateStr,
+      label: i === 0 ? "Today" : d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    });
+  }
+  return days;
+}
+
 function LeaderboardContent() {
   const searchParams = useSearchParams();
+  const { isSignedIn, user: clerkUser } = useUser();
   const initialCat = searchParams.get("category") ?? "All";
   const [mode, setMode] = useState<(typeof MODES)[number]>(resolveInitialMode(initialCat));
   const [region, setRegion] = useState(resolveInitialRegion(initialCat));
+  const [dailyDate, setDailyDate] = useState(new Date().toISOString().slice(0, 10));
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const dailyDays = getLast7Days();
 
   // Compute the actual filter value
   const filterCategory =
@@ -46,11 +65,18 @@ function LeaderboardContent() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    getTopScores(filterCategory)
-      .then(setEntries)
-      .catch(() => setError("Failed to load scores."))
-      .finally(() => setLoading(false));
-  }, [filterCategory]);
+    if (mode === "Daily") {
+      getDailyScores(dailyDate)
+        .then(setEntries)
+        .catch(() => setError("Failed to load scores."))
+        .finally(() => setLoading(false));
+    } else {
+      getTopScores(filterCategory)
+        .then(setEntries)
+        .catch(() => setError("Failed to load scores."))
+        .finally(() => setLoading(false));
+    }
+  }, [mode, filterCategory, dailyDate]);
 
   return (
     <div className="flex flex-1 flex-col items-center overflow-y-auto px-4 py-10">
@@ -98,6 +124,25 @@ function LeaderboardContent() {
           </div>
         )}
 
+        {/* Daily date pills */}
+        {mode === "Daily" && (
+          <div className="mb-4 flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+            {dailyDays.map((d) => (
+              <button
+                key={d.date}
+                onClick={() => setDailyDate(d.date)}
+                className={`cursor-pointer shrink-0 rounded-full px-3 py-1 text-[11px] font-medium transition-all duration-150 ${
+                  dailyDate === d.date
+                    ? "bg-[#1a2a1a] border border-accent text-accent"
+                    : "bg-[#111111] border border-[#222222] text-[#666666] hover:text-foreground"
+                }`}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="overflow-hidden rounded-2xl border border-border bg-surface">
           {loading ? (
             <div className="divide-y divide-[#1a1a1a]">
@@ -118,7 +163,9 @@ function LeaderboardContent() {
           ) : entries.length === 0 ? (
             <div className="px-6 py-12 text-center">
               <p className="text-foreground-muted">
-                {mode === "Classic" && region === "All"
+                {mode === "Daily"
+                  ? "No one played on this day yet."
+                  : mode === "Classic" && region === "All"
                   ? "No scores yet. Play a game to get on the board!"
                   : `No scores for ${mode === "Classic" ? region : mode} yet.`}
               </p>
@@ -137,37 +184,48 @@ function LeaderboardContent() {
                   <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">Player</th>
                   <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted text-right">Score</th>
                   <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted text-right">Streak</th>
-                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted text-right hidden sm:table-cell">Date</th>
+                  {mode !== "Daily" && (
+                    <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted text-right hidden sm:table-cell">Date</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1a1a1a]">
-                {entries.map((entry, i) => (
-                  <tr
-                    key={i}
-                    className="transition-colors hover:bg-surface-elevated"
-                    style={i < 3 ? { borderLeft: "2px solid #4ade80" } : undefined}
-                  >
-                    <td className="px-4 py-3 font-mono text-sm tabular-nums text-foreground-muted">
-                      {i + 1}
-                    </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-foreground">
-                      {entry.name}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-sm font-bold tabular-nums text-accent">
-                      {entry.score.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-sm tabular-nums text-accent">
-                      {entry.bestStreak > 0 ? (
-                        <span className="inline-flex items-center justify-end gap-0.5">
-                          <Flame className="h-3 w-3" strokeWidth={1.5} /> {entry.bestStreak}
-                        </span>
-                      ) : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right text-xs text-foreground-muted hidden sm:table-cell">
-                      {new Date(entry.date).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
+                {entries.map((entry, i) => {
+                  const isCurrentUser = mode === "Daily" && isSignedIn && clerkUser && entry.userId === clerkUser.id;
+                  return (
+                    <tr
+                      key={i}
+                      className="transition-colors hover:bg-surface-elevated"
+                      style={{
+                        borderLeft: isCurrentUser ? "2px solid #4ade80" : i < 3 ? "2px solid #4ade80" : "none",
+                        background: isCurrentUser ? "#0f1a0f" : undefined,
+                      }}
+                    >
+                      <td className="px-4 py-3 font-mono text-sm tabular-nums text-foreground-muted">
+                        {i + 1}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-semibold text-foreground">
+                        {entry.name}
+                        {isCurrentUser && <span className="ml-1.5 text-[10px] text-accent">(you)</span>}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-sm font-bold tabular-nums text-accent">
+                        {entry.score.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-sm tabular-nums text-accent">
+                        {entry.bestStreak > 0 ? (
+                          <span className="inline-flex items-center justify-end gap-0.5">
+                            <Flame className="h-3 w-3" strokeWidth={1.5} /> {entry.bestStreak}
+                          </span>
+                        ) : "—"}
+                      </td>
+                      {mode !== "Daily" && (
+                        <td className="px-4 py-3 text-right text-xs text-foreground-muted hidden sm:table-cell">
+                          {new Date(entry.date).toLocaleDateString()}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
